@@ -1,0 +1,34 @@
+{
+  "name": "cogs-javascript-sdk",
+  "version": "1.0.0",
+  "description": "Unified JavaScript SDK for Cogs APIs",
+  "author": "Joel Edwards <joeledwards@gmail.com>",
+  "keywords": [
+    "cogs",
+    "cogswell"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joeledwards/node-cogs-javascript-sdk.git"
+  },
+  "main": "./lib/index",
+  "dependencies": {
+    "durations": "^2.0.0",
+    "joi": "^8.0.5",
+    "lodash": "^4.6.1",
+    "moment": "^2.12.0",
+    "q": "^1.4.1",
+    "request": "^2.69.0",
+    "uuid": "^2.0.1",
+    "ws": "^1.0.1"
+  },
+  "devDependencies": {
+    "coffee-script": "^1.10.0"
+  },
+  "scripts": {
+    "prepublish": "cake build",
+    "build": "cake build",
+    "test": "coffee test.coffee"
+  }
+}
