@@ -7,7 +7,6 @@ errors = require './errors'
 # valid the config object
 validateConfig = (config) ->
   schema = Joi.object().keys({
-    environment: Joi.string().required()
     base_url: Joi.string().uri().optional().default("https://api.cogswell.io", "URL for the Cogswell API.")
     api_key: Joi.object().keys({
       access: Joi.string().regex(/^[0-9a-fA-F]{32}$/).required()
@@ -17,25 +16,8 @@ validateConfig = (config) ->
       salt:   Joi.string().regex(/^[0-9a-fA-F]{64}$/).required()
       secret: Joi.string().regex(/^[0-9a-fA-F]{64}$/).required()
     }).optional()
-    smtp_server: Joi.object().keys({
-      server: Joi.string().hostname().required()
-      port: Joi.number().integer().min(1).max(65535).required()
-      username: Joi.string().min(1).required()
-      password: Joi.string().min(1).required()
-      name: Joi.string().optional()
-      email: Joi.string().email().required()
-    }).required()
-    xmpp_server: Joi.object().keys({
-      jid: Joi.string().min(1).required()
-      password: Joi.string().min(1).required()
-      host: Joi.string().hostname().required()
-      port: Joi.number().integer().min(1).max(65535).required()
-    }).optional()
     http_request_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for HTTP requests.")
     websocket_connect_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for WebSocket connects.")
-    email: Joi.array().items(Joi.string().email()).unique().optional()
-    phone: Joi.array().items(Joi.string().email()).unique().optional()
-    gtalk: Joi.array().items(Joi.string().email()).unique().optional()
   })
   
   Q.nfcall Joi.validate, config, schema
