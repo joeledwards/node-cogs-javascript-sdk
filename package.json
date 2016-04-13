@@ -27,6 +27,7 @@
     "coffee-script": "^1.10.0"
   },
   "scripts": {
+    "example": "coffee example.coffee",
     "prepublish": "cake build",
     "build": "cake build",
     "test": "coffee test.coffee"
