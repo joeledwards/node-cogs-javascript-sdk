@@ -70,7 +70,7 @@ cogs.tools.getClient('cogs-tools.json')
     return client.getNamespaceSchema(namespace);
 })
 .then((schema) => {
-    console.log(`Cogs Build Info:\n${JSON.stringify(schema, null, 2)}`);
+    console.log(`Schema for namespace '${namespace}':\n${JSON.stringify(schema, null, 2)}`);
 })
 .catch((error) => {
     console.error(`Error fetching the schema for namespace ${namespace}: ${error}\n${error.stack}`);
