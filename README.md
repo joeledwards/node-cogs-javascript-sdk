@@ -181,30 +181,15 @@ var topicAttributes = {
 };
 
 cogs.client.getClient('cogs-client.json')
-.then((client) => {
-    return client.subscribe(namespace, topicAttributes, (event, data) => {
-        switch (event) {
-          case 'open'
-            console.log('Push WebSocket established.');
-            break;
-          case 'close':
-            console.log('Push WebSocket closed.');
-            break;
-          case 'error':
-            console.error('Error in push WebSocket', data);
-            break;
-          case 'message':
-            console.error('Received a message:', data);
-            break;
-          case 'unexpected-response':
-            var request = data[0];
-            var response = data[1];
-            console.error('Error upgrading request', request, response);
-            break;
-          default:
-            console.error(`Received unknown event '${event}'`)
-        }
-    });
+.then((client) => client.subscribe(namespace, topicAttributes))
+.then((ws) => {
+  ws.on('error', (error) => console.error('Error in push WebSocket', error));
+  ws.on('open', () => console.log('Push WebSocket established.'));
+  ws.on('close', () => console.log('Push WebSocket closed.'));
+  ws.on('message', (message) => console.error('Received a message:', message));
+  ws.on('acked', (messageId) => console.error(`Message ${messageId} acknowledged.`));
+  ws.on('reconnect', () => console.error('Push WebSocket replaced.'));
+  ws.on('unexpected-response', (req, res) => console.error('Error upgrading GET request to WebSocket', req, res));
 })
 .catch((error) => {
     console.error(`Error establishing push WebSocket: ${error}\n${error.stack}`);
