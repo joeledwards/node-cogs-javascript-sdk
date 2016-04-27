@@ -1,6 +1,7 @@
 _ = require 'lodash'
 FS = require 'fs'
 Q = require 'q'
+EventEmitter = require 'events'
 moment = require 'moment'
 request = require 'request'
 WebSocket = require 'ws'
@@ -16,13 +17,14 @@ makeRecord = (cfg) ->
     client_salt: cfg.client_key.salt
     timestamp: moment.utc().toISOString()
 
-class PushWebSocket
-  constructor: (@cfg, @namespace, @attributes, @eventHandler) ->
+class PushWebSocket extends EventEmitter
+  constructor: (@cfg, @namespace, @attributes, @autoReconnect) ->
     @baseUrl = @cfg.base_ws_url
     @sock = null
     @pingerRef = null
     @messageCount = 0
     @lastMessageId = null
+    @initiatedClose = false
 
   disconnect: ->
     if @pingerRef?
@@ -35,19 +37,12 @@ class PushWebSocket
 
     if @sock?
       try
+        @initiatedClose = true
         @sock.close()
       catch error
         console.log "Error while closing WebSocket: #{error}\n#{error.stack}"
       finally
         @sock = null
-
-  # Notify of this event via the optional @eventHandler function
-  notify: (event, data = undefined) ->
-    try
-      if @eventHandler?
-        @eventHandler event, data
-    catch error
-      console.error "Error in user-supplied event handler: #{error}\n#{error.stack}"
 
   connect: ->
     d = Q.defer()
@@ -72,13 +67,19 @@ class PushWebSocket
 
         # The WebSocket was closed
         @sock.on 'close', =>
-          @notify 'close'
+          if @autoReconnect == true and @initiatedClose != true
+            @sock = null
+            @connect().then ->
+              console.log "Push WebSocket replaced for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
 
-          console.log "Push WebSocket closed for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
+            @emit 'reconnect'
+          else
+            @emit 'close'
+            console.log "Push WebSocket closed for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
 
         # The WebSocket connection has been established
         @sock.on 'open', =>
-          @notify 'open'
+          @emit 'open'
 
           pinger = =>
             @sock.ping()
@@ -90,13 +91,13 @@ class PushWebSocket
 
         # An error occurred
         @sock.on 'error', (error) =>
-          @notify 'error', error
+          @emit 'error', error
 
           console.error "WebSocket error for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}] : #{error}\n#{error.stack}"
 
         # Received a message
         @sock.on 'message', (msg) =>
-          @notify 'message', msg
+          @emit 'message', msg
 
           try
             @messageCount += 1
@@ -108,12 +109,14 @@ class PushWebSocket
             @sock.send JSON.stringify(acknowledgement), (error) ->
               if error?
                 console.error "Error sending acknowledgement for message '#{message.message_id}': #{error}\n#{error.stack}"
+              else
+                @emit 'acked', message.message_id
           catch error
             console.error "Invalid push message received: #{error}\n#{error.stack}"
 
         # WebSocket connection was rejected by the API
         @sock.on 'unexpected-response', (req, res) =>
-          @notify 'unexpected-response', [req, res]
+          @emit 'unexpected-response', [req, res]
 
           res.on 'data', (raw) ->
             try
@@ -140,11 +143,11 @@ class ApiClient
   clientSalt: -> @cfg?.client_key?.salt
   clientSecret: -> @cfg?.client_key?.secret
 
-  subscribe: (namespace, attributes, eventHandler) ->
+  subscribe: (namespace, attributes) ->
     d = Q.defer()
 
     try
-      ws = new PushWebSocket(@cfg, namespace, attributes, eventHandler)
+      ws = new PushWebSocket(@cfg, namespace, attributes)
       ws.connect()
       .then ->
         d.resolve ws
