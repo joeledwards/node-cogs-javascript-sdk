@@ -106,7 +106,7 @@ class PushWebSocket extends EventEmitter
             acknowledgement =
               event: "message-received"
               message_id: message.message_id
-            @sock.send JSON.stringify(acknowledgement), (error) ->
+            @sock.send JSON.stringify(acknowledgement), (error) =>
               if error?
                 console.error "Error sending acknowledgement for message '#{message.message_id}': #{error}\n#{error.stack}"
               else
