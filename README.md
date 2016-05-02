@@ -1,5 +1,7 @@
 # A unified JavaScript SDK for the Cogs (cogswell.io) APIs
 
+[![Version npm](https://img.shields.io/npm/v/cogs-sdk.svg?style=flat-square)](http://browsenpm.org/package/cogs-sdk)
+
 This module contains the JavaScript SDKs for the various Cogs APIs.
 * Info - Informational APIs requiring no authentication.
 * Tools - Customer APIs which are meant for Cogs' users' internal use only (not client apps, websites, or devices). These require authentication using customer API key credentials.
