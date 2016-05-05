@@ -70,18 +70,26 @@ class PushWebSocket extends EventEmitter
         @sock.on 'close', =>
           if @autoReconnect == true and @initiatedClose != true
             @sock = null
-            @connect().then =>
-              console.log "Push WebSocket replaced for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
-            .catch (error) =>
-              console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : ${error}\n${error.stack}"
+            console.log "Connection closed. Reconnecting in 5 seconds."
 
-            @emit 'reconnect'
+            reconnect = =>
+              @connect().then =>
+                console.log "Push WebSocket replaced for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+                @emit 'reconnect'
+              .catch (error) =>
+                console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : ${error}\n${error.stack}"
+                @emit 'error', error
+            
+            setTimeout reconnect, 5000
+
           else
             @emit 'close'
             console.log "Push WebSocket closed for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
 
         # The WebSocket connection has been established
         @sock.on 'open', =>
+          console.log "Push WebSocket opened for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+
           @emit 'open'
 
           pinger = =>
@@ -152,10 +160,7 @@ class ApiClient
     try
       ws = new PushWebSocket(@cfg, namespace, attributes)
       ws.connect()
-      .then ->
-        d.resolve ws
-      .catch (error) ->
-        d.reject error
+      d.resolve ws
     catch error
       d.reject error
 
