@@ -1,6 +1,6 @@
 {
   "name": "cogs-sdk",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Unified JavaScript SDK for Cogs APIs",
   "author": "Joel Edwards <joeledwards@gmail.com>",
   "keywords": [
