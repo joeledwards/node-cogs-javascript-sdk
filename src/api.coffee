@@ -81,10 +81,10 @@ class PushWebSocket extends EventEmitter
 
             reconnect = =>
               @connect().then =>
-                console.log "Push WebSocket replaced for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+                console.log "Push WebSocket replaced for namespace '#{@namespace}' topic [#{@attributes}]"
                 @emit 'reconnect'
               .catch (error) =>
-                console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : ${error}\n${error.stack}"
+                console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{@attributes}] : ${error}\n${error.stack}"
                 @emit 'error', error
             
             console.log "Connection closed. Reconnecting in 5 seconds."
@@ -93,11 +93,11 @@ class PushWebSocket extends EventEmitter
 
           else
             @emit 'close'
-            console.log "Push WebSocket closed for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+            console.log "Push WebSocket closed for namespace '#{@namespace}' topic [#{@attributes}]"
 
         # The WebSocket connection has been established
         @sock.on 'open', =>
-          console.log "Push WebSocket opened for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+          console.log "Push WebSocket opened for namespace '#{@namespace}' topic [#{@attributes}]"
 
           @emit 'open'
 
@@ -113,7 +113,7 @@ class PushWebSocket extends EventEmitter
         @sock.on 'error', (error) =>
           @emit 'error', error
 
-          console.error "WebSocket error for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : #{error}\n#{error.stack}"
+          console.error "WebSocket error for namespace '#{@namespace}' topic [#{@attributes}] : #{error}\n#{error.stack}"
 
         # Received a message
         @sock.on 'message', (msg) =>
