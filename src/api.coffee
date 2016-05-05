@@ -70,7 +70,14 @@ class PushWebSocket extends EventEmitter
         @sock.on 'close', =>
           if @autoReconnect == true and @initiatedClose != true
             @sock = null
-            console.log "Connection closed. Reconnecting in 5 seconds."
+
+            if @pingerRef?
+              try
+                clearInterval @pingerRef
+              catch error
+                console.error "Error clearing pinger interval: #{error}\n#{error.stack}"
+              finally
+                @pingerRef = null
 
             reconnect = =>
               @connect().then =>
@@ -80,6 +87,8 @@ class PushWebSocket extends EventEmitter
                 console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : ${error}\n${error.stack}"
                 @emit 'error', error
             
+            console.log "Connection closed. Reconnecting in 5 seconds."
+
             setTimeout reconnect, 5000
 
           else
