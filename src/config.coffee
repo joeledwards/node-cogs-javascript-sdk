@@ -18,6 +18,7 @@ validateConfig = (config) ->
     }).optional()
     http_request_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for HTTP requests.")
     websocket_connect_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for WebSocket connects.")
+    websocket_auto_reconnect: Joi.boolean().optional().default(true, "Use this field to control auto-reconnect, on by default.")
   })
   
   Q.nfcall Joi.validate, config, schema
@@ -67,4 +68,5 @@ readJson = (path) ->
 module.exports =
   getConfig: getConfig
   readJson: readJson
+  validateConfig: validateConfig
 

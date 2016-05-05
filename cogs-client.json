@@ -7,5 +7,6 @@
     "secret": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "http_request_timeout": 30000,
-  "websocket_connect_timeout": 30000
+  "websocket_connect_timeout": 30000,
+  "websocket_auto_reconnect": true
 }

@@ -18,13 +18,14 @@ makeRecord = (cfg) ->
     timestamp: moment.utc().toISOString()
 
 class PushWebSocket extends EventEmitter
-  constructor: (@cfg, @namespace, @attributes, @autoReconnect) ->
+  constructor: (@cfg, @namespace, @attributes) ->
     @baseUrl = @cfg.base_ws_url
     @sock = null
     @pingerRef = null
     @messageCount = 0
     @lastMessageId = null
     @initiatedClose = false
+    @autoReconnect = @cfg.websocket_auto_reconnect ? true
 
   disconnect: ->
     if @pingerRef?
@@ -71,6 +72,8 @@ class PushWebSocket extends EventEmitter
             @sock = null
             @connect().then ->
               console.log "Push WebSocket replaced for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
+            .catch (error) ->
+              console.error "Error replacing push WebSocket for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}] : ${error}\n${error.stack}"
 
             @emit 'reconnect'
           else
@@ -227,5 +230,7 @@ module.exports =
       new ApiClient(cfg)
 
   getClientWithConfig: (cfg) ->
-    Q(new ApiClient(cfg))
+    config.validateConfig cfg
+    .then (cfg) ->
+      new ApiClient(cfg)
 
