@@ -70,15 +70,15 @@ class PushWebSocket extends EventEmitter
         @sock.on 'close', =>
           if @autoReconnect == true and @initiatedClose != true
             @sock = null
-            @connect().then ->
-              console.log "Push WebSocket replaced for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
-            .catch (error) ->
-              console.error "Error replacing push WebSocket for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}] : ${error}\n${error.stack}"
+            @connect().then =>
+              console.log "Push WebSocket replaced for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
+            .catch (error) =>
+              console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : ${error}\n${error.stack}"
 
             @emit 'reconnect'
           else
             @emit 'close'
-            console.log "Push WebSocket closed for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}]"
+            console.log "Push WebSocket closed for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}]"
 
         # The WebSocket connection has been established
         @sock.on 'open', =>
@@ -96,7 +96,7 @@ class PushWebSocket extends EventEmitter
         @sock.on 'error', (error) =>
           @emit 'error', error
 
-          console.error "WebSocket error for namespace '#{data.record.namespace}' topic [#{_(data.record.attributes).join(",")}] : #{error}\n#{error.stack}"
+          console.error "WebSocket error for namespace '#{@namespace}' topic [#{_(@attributes).join(",")}] : #{error}\n#{error.stack}"
 
         # Received a message
         @sock.on 'message', (msg) =>
