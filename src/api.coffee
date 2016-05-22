@@ -1,7 +1,7 @@
 _ = require 'lodash'
 FS = require 'fs'
 Q = require 'q'
-EventEmitter = require 'events'
+EventEmitter = require 'eventemitter3'
 moment = require 'moment'
 request = require 'request'
 WebSocket = require 'ws'
@@ -46,6 +46,9 @@ class PushWebSocket extends EventEmitter
         console.log "Error while closing WebSocket: #{error}\n#{error.stack}"
       finally
         @sock = null
+
+    @removeAllListeners()
+
 
   connect: ->
     d = Q.defer()
