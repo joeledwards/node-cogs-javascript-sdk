@@ -14,10 +14,10 @@
   },
   "main": "./lib/index",
   "dependencies": {
-    "durations": "^2.0.0",
+    "durations": "^2.2.0",
     "eventemitter3": "^1.2.0",
-    "joi": "^8.0.5",
-    "lodash": "^4.11.2",
+    "joi": "^8.1.0",
+    "lodash": "^4.12.0",
     "moment": "^2.13.0",
     "q": "^1.4.1",
     "request": "^2.72.0",
