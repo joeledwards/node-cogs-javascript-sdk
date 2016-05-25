@@ -1,11 +1,18 @@
 {
   "name": "cogs-sdk",
-  "version": "2.2.1",
-  "description": "Unified JavaScript SDK for Cogs APIs",
-  "author": "Joel Edwards <joeledwards@gmail.com>",
+  "version": "2.2.2",
+  "description": "Unified JavaScript SDK for Cogs' APIs",
+  "author": {
+    "name": "Joel Edwards",
+    "email": "joeledwards@gmail.com",
+    "url": "https://github.com/joeledwards"
+  },
   "keywords": [
     "cogs",
-    "cogswell"
+    "cogswell",
+    "messaging",
+    "message broker",
+    "pub/sub"
   ],
   "license": "ISC",
   "repository": {
@@ -16,8 +23,8 @@
   "dependencies": {
     "durations": "^2.2.0",
     "eventemitter3": "^1.2.0",
-    "joi": "^8.1.0",
-    "lodash": "^4.12.0",
+    "joi": "^8.1.1",
+    "lodash": "^4.13.1",
     "moment": "^2.13.0",
     "q": "^1.4.1",
     "request": "^2.72.0",
