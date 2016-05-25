@@ -20,7 +20,11 @@
     "url": "https://github.com/joeledwards/node-cogs-javascript-sdk.git"
   },
   "main": "./lib/index",
+  "bin": {
+    "cogs": "./bin/cogs.js"
+  },
   "dependencies": {
+    "commander": "^2.9.0",
     "durations": "^2.2.0",
     "eventemitter3": "^1.2.0",
     "joi": "^8.1.1",
