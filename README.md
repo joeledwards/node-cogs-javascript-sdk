@@ -185,13 +185,36 @@ var topicAttributes = {
 cogs.client.getClient('cogs-client.json')
 .then((client) => client.subscribe(namespace, topicAttributes))
 .then((ws) => {
-  ws.on('error', (error) => console.error('Error in push WebSocket', error));
-  ws.on('open', () => console.log('Push WebSocket established.'));
-  ws.on('close', () => console.log('Push WebSocket closed.'));
-  ws.on('message', (message) => console.error('Received a message:', message));
-  ws.on('acked', (messageId) => console.error(`Message ${messageId} acknowledged.`));
-  ws.on('reconnect', () => console.error('Push WebSocket replaced.'));
-  ws.on('unexpected-response', (req, res) => console.error('Error upgrading GET request to WebSocket', req, res));
+  return new Promise((resolve, reject) => {
+    ws.on('error', (error) => {
+      console.error('Error in push WebSocket', error)
+
+      // The socket will either stay alive or be replaced on error, this is
+      // just to complete our example which expects a single message.
+      try {
+        ws.close();
+      } catch (e) {
+        console.error('Websocket is already closed', error);
+      } finally {
+        reject(error);
+      }
+    });
+    ws.on('reconnect', () => console.log('Push WebSocket replaced.'));
+
+    ws.on('open', () => console.log('Push WebSocket established.'));
+    ws.on('close', () => {
+      console.log('Push WebSocket closed.')
+      resolve();
+    });
+
+    ws.on('message', (message) => console.log('Received a message:', message));
+    ws.on('acked', (messageId) => {
+      console.log(`Message ${messageId} acknowledged.`);
+      ws.close(); // Alias to ws.disconnect()
+    });
+
+    ws.on('unexpected-response', (req, res) => console.error('Error upgrading GET request to WebSocket', req, res));
+ });
 })
 .catch((error) => {
     console.error(`Error establishing push WebSocket: ${error}\n${error.stack}`);

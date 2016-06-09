@@ -29,7 +29,8 @@ class PushWebSocket extends EventEmitter
     @initiatedClose = false
     @autoReconnect = @cfg.websocket_auto_reconnect ? true
 
-  disconnect: ->
+  # Shutdown the WebSocket for good (prevents auto-reconnect)
+  close: ->
     if @pingerRef?
       try
         clearInterval @pingerRef
@@ -49,7 +50,10 @@ class PushWebSocket extends EventEmitter
 
     @removeAllListeners()
 
+  # Alias to the close() method
+  disconnect: -> @close()
 
+  # Establishes the socket if it is not yet connected
   connect: ->
     d = Q.defer()
     if @sock?
