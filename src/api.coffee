@@ -44,7 +44,7 @@ class PushWebSocket extends EventEmitter
         @initiatedClose = true
         @sock.close()
       catch error
-        console.log "Error while closing WebSocket: #{error}\n#{error.stack}"
+        console.error "Error while closing WebSocket: #{error}\n#{error.stack}"
       finally
         @sock = null
 
@@ -76,7 +76,7 @@ class PushWebSocket extends EventEmitter
         @sock = new WebSocket(url, options)
 
         # The WebSocket was closed
-        @sock.on 'close', =>
+        @sock.once 'close', =>
           if @autoReconnect == true and @initiatedClose != true
             @sock = null
 
@@ -101,11 +101,11 @@ class PushWebSocket extends EventEmitter
             setTimeout reconnect, 5000
 
           else
-            @emit 'close'
             console.log "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+            @emit 'close'
 
         # The WebSocket connection has been established
-        @sock.on 'open', =>
+        @sock.once 'open', =>
           console.log "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
 
           @emit 'open'
