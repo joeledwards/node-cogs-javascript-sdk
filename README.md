@@ -241,6 +241,8 @@ $ cogs -h
     random-uuid [config]                 
     schema <namespace> [config]          
     namespace-schema <namespace> [config]
+    build [config]
+    build-info [config]
 
   Options:
 
@@ -298,6 +300,15 @@ $ cogs schema auto-monitor
       "ciid": true
     }
   ]
+}
+```
+
+### Fetch the build info for the Cogs' API
+```
+$ cogs build-info
+{
+  "build_time": "2016-06-13T22:39:55+0000",
+  "commit_hash": "da3d615485135b71873481282c13d30e52b16370"
 }
 ```
 

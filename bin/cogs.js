@@ -127,8 +127,8 @@ program.command('schema <namespace> [config]')
 program.command('namespace-schema <namespace> [config]')
 .action((namespace, config) => run('namespace-schema', [namespace], config));
 
-program.command('build').action(() => run('build-info'));
-program.command('build-info').action(() => run('build-info'));
+program.command('build [config]').action((config) => run('build-info', config));
+program.command('build-info [config]').action((config) => run('build-info', config));
 
 program.parse(process.argv);
 
