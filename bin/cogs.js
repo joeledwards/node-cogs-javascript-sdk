@@ -17,6 +17,14 @@ var configPaths = [
   `./cogs.json`
 ];
 
+function jsonify(obj) {
+  return JSON.stringify(obj, null, 2);
+}
+
+function beautify(json) {
+  return jsonify(JSON.parse(json))
+}
+
 function findConfig(paths) {
   if (!paths || paths.length < 1)
     return Q(undefined);
@@ -47,9 +55,13 @@ function clientKey(client) {
       websocket_auto_reconnect: true
     };
 
-    Q.nfcall(fs.writeFile, clientFile, JSON.stringify(clientConfig, null, 2) + '\n')
+    Q.nfcall(fs.writeFile, clientFile, jsonify(clientConfig) + '\n')
     .then(() => console.log(`Wrote new client config to ${clientFile}`));
   });
+}
+
+function buildInfo(client) {
+  return client.getBuildInfo().then((result) => console.log(jsonify(result)));
 }
 
 function randomUuid(client) {
@@ -58,13 +70,35 @@ function randomUuid(client) {
 
 function namespaceSchema(client, namespace) {
   return client.getNamespaceSchema(namespace)
-  .then((schema) => console.log(JSON.stringify(schema, null, 2)));
+  .then((schema) => console.log(jsonify(schema)));
 }
 
-function run(command, args, configFile) {
-  if (configFile) {
-    configPaths.unshift(configFile);
-  }
+function runInfoCommand(command, args, configFile) {
+  return cogs.info.getClient(configFile)
+  .then((client) => {
+    switch(command) {
+      case 'build-info': return buildInfo(client);
+      default: console.log("runInfoCommand: unrecognized.");
+    }
+  });
+}
+
+function runToolsCommand(command, args, configFile) {
+  return cogs.tools.getClient(configFile)
+  .then((client) => {
+    switch(command) {
+      case 'client-key': return clientKey(client);
+      case 'random-uuid': return randomUuid(client);
+      case 'namespace-schema': return namespaceSchema(client, args[0]);
+      default: console.log("runToolsCommand: unrecognized.");
+    }
+  });
+}
+
+function run(command, args, configFilePath) {
+  if (configFilePath)
+    configPaths.unshift(configFilePath);
+
   findConfig(configPaths)
   .then((configFile) => {
     if (!configFile) {
@@ -72,13 +106,11 @@ function run(command, args, configFile) {
       process.exit(1);
     }
 
-    return cogs.tools.getClient(configFile);
-  })
-  .then((client) => {
+    return configFile;
+  }).then((configFile) => {
     switch(command) {
-      case 'client-key': return clientKey(client);
-      case 'random-uuid': return randomUuid(client);
-      case 'namespace-schema': return namespaceSchema(client, args[0]);
+      case 'build-info': return runInfoCommand(command, args, configFile);
+      default: return runToolsCommand(command, args, configFile);
     }
   })
   .catch((error) => console.log(`Unexpected error: ${error}\n${error.stack}`));
@@ -94,6 +126,9 @@ program.command('schema <namespace> [config]')
 .action((namespace, config) => run('namespace-schema', [namespace], config));
 program.command('namespace-schema <namespace> [config]')
 .action((namespace, config) => run('namespace-schema', [namespace], config));
+
+program.command('build').action(() => run('build-info'));
+program.command('build-info').action(() => run('build-info'));
 
 program.parse(process.argv);
 

@@ -51,8 +51,7 @@ class InfoClient
 module.exports =
   getClient: (configPath) ->
     config.getConfig configPath
-    .then (cfg) ->
-      new InfoClient(cfg)
+    .then (cfg) -> new InfoClient(cfg)
   
   getClientWithConfig: (cfg) ->
     Q(new InfoClient(cfg))
