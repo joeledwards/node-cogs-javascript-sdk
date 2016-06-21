@@ -148,7 +148,7 @@ class PushWebSocket extends EventEmitter
             @messageCount += 1
             message = JSON.parse msg
             @lastMessageId = message.message_id
-            @ack(message.messageId) if @autoAcknowledge
+            @ack(message.messageId) if @autoAcknowledge == true
           catch error
             logger.error "Invalid push message received: #{error}\n#{error.stack}"
 
@@ -179,11 +179,11 @@ class ApiClient
   clientSalt: -> @cfg?.client_key?.salt
   clientSecret: -> @cfg?.client_key?.secret
 
-  subscribe: (namespace, attributes) ->
+  subscribe: (namespace, attributes, autoAcknowledge = true) ->
     d = Q.defer()
 
     try
-      ws = new PushWebSocket(@cfg, namespace, attributes)
+      ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
       ws.connect()
       d.resolve ws
     catch error
