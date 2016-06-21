@@ -8,6 +8,7 @@ api = require './api'
 auth = require './auth'
 config = require './config'
 errors = require './errors'
+logger = require './logger'
 
 # Create the record for use in authenticating the tools client
 makeRecord = (cfg) ->
@@ -92,8 +93,10 @@ module.exports =
   getClient: (configPath) ->
     config.getConfig configPath
     .then (cfg) ->
+      logger.setLogLevel(cfg.log_level) if cfg.log_level?
       new ToolsClient(cfg)
   
   getClientWithConfig: (cfg) ->
+    logger.setLogLevel(cfg.log_level) if cfg.log_level?
     Q(new ToolsClient(cfg))
 

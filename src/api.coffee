@@ -1,14 +1,15 @@
 _ = require 'lodash'
-FS = require 'fs'
 Q = require 'q'
-EventEmitter = require 'eventemitter3'
+FS = require 'fs'
 moment = require 'moment'
 request = require 'request'
 WebSocket = require 'ws'
+EventEmitter = require 'eventemitter3'
 
 auth = require './auth'
 config = require './config'
 errors = require './errors'
+logger = require './logger'
 
 jsonify = (obj) -> JSON.stringify obj, null, 2
 
@@ -20,7 +21,7 @@ makeRecord = (cfg) ->
     timestamp: moment.utc().toISOString()
 
 class PushWebSocket extends EventEmitter
-  constructor: (@cfg, @namespace, @attributes) ->
+  constructor: (@cfg, @namespace, @attributes, @autoAcknowledge = true) ->
     @baseUrl = @cfg.base_ws_url
     @sock = null
     @pingerRef = null
@@ -35,7 +36,7 @@ class PushWebSocket extends EventEmitter
       try
         clearInterval @pingerRef
       catch error
-        console.error "Error clearing ping interval: #{error}\n#{error.stack}"
+        logger.error "Error clearing ping interval: #{error}\n#{error.stack}"
       finally
         @pingerRef = null
 
@@ -44,7 +45,7 @@ class PushWebSocket extends EventEmitter
         @initiatedClose = true
         @sock.close()
       catch error
-        console.error "Error while closing WebSocket: #{error}\n#{error.stack}"
+        logger.error "Error while closing WebSocket: #{error}\n#{error.stack}"
       finally
         @sock = null
 
@@ -52,6 +53,21 @@ class PushWebSocket extends EventEmitter
 
   # Alias to the close() method
   disconnect: -> @close()
+
+  # Manually acknowledge that a message has been received
+  ack: (messageId) ->
+    if @sock?
+      acknowledgement =
+        event: "message-received"
+        message_id: messageId
+      @sock.send JSON.stringify(acknowledgement), (error) =>
+        if error?
+          logger.error "Error sending acknowledgement for message '#{messageId}': #{error}\n#{error.stack}"
+        else
+          @emit 'acked', messageId
+
+  # Alias to the ack() method
+  acknowledge: (messageId) -> @ack messageId
 
   # Establishes the socket if it is not yet connected
   connect: ->
@@ -84,29 +100,29 @@ class PushWebSocket extends EventEmitter
               try
                 clearInterval @pingerRef
               catch error
-                console.error "Error clearing pinger interval: #{error}\n#{error.stack}"
+                logger.error "Error clearing pinger interval: #{error}\n#{error.stack}"
               finally
                 @pingerRef = null
 
             reconnect = =>
               @connect().then =>
-                console.log "Push WebSocket replaced for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+                logger.info "Push WebSocket replaced for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
                 @emit 'reconnect'
               .catch (error) =>
-                console.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : ${error}\n${error.stack}"
+                logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : ${error}\n${error.stack}"
                 @emit 'error', error
             
-            console.log "Connection closed. Reconnecting in 5 seconds."
+            logger.info "Connection closed. Reconnecting in 5 seconds."
 
             setTimeout reconnect, 5000
 
           else
-            console.log "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+            logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
             @emit 'close'
 
         # The WebSocket connection has been established
         @sock.once 'open', =>
-          console.log "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+          logger.info "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
 
           @emit 'open'
 
@@ -122,7 +138,7 @@ class PushWebSocket extends EventEmitter
         @sock.on 'error', (error) =>
           @emit 'error', error
 
-          console.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+          logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
 
         # Received a message
         @sock.on 'message', (msg) =>
@@ -132,16 +148,9 @@ class PushWebSocket extends EventEmitter
             @messageCount += 1
             message = JSON.parse msg
             @lastMessageId = message.message_id
-            acknowledgement =
-              event: "message-received"
-              message_id: message.message_id
-            @sock.send JSON.stringify(acknowledgement), (error) =>
-              if error?
-                console.error "Error sending acknowledgement for message '#{message.message_id}': #{error}\n#{error.stack}"
-              else
-                @emit 'acked', message.message_id
+            @ack(message.messageId) if @autoAcknowledge
           catch error
-            console.error "Invalid push message received: #{error}\n#{error.stack}"
+            logger.error "Invalid push message received: #{error}\n#{error.stack}"
 
         # WebSocket connection was rejected by the API
         @sock.on 'unexpected-response', (req, res) =>
@@ -151,10 +160,8 @@ class PushWebSocket extends EventEmitter
             try
               record = JSON.parse json
               json = JSON.stringify record, null, 2
-              #console.log "Failed to establish WebSocket: [#{res.statusCode}] #{formatted}"
               d.reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
             catch error
-              #console.error "Failed to establish push WebSocket", undefined, res.statusCode, json)
               d.reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, raw)
             false
           false
@@ -226,7 +233,6 @@ class ApiClient
 
     request options, (error, response) ->
       if error?
-        #console.error "Error attempting to send a request to the Cogs server: #{error}\n#{error.stack}"
         d.reject new errors.ApiError("Error attempting to send a request to the Cogs server", error)
       else if response.statusCode != 200
         try
@@ -239,7 +245,6 @@ class ApiClient
         try
           d.resolve JSON.parse(response.body)
         catch error
-          #console.error "Error parsing response JSON: #{error}\n#{error.stack}"
           d.reject new errors.ApiError("Error parsing response body (expected valid JSON)", error)
 
     d.promise
@@ -250,10 +255,12 @@ module.exports =
   getClient: (configPath) ->
     config.getConfig configPath
     .then (cfg) ->
+      logger.setLogLevel(cfg.log_level) if cfg.log_level?
       new ApiClient(cfg)
 
   getClientWithConfig: (cfg) ->
     config.validateConfig cfg
     .then (cfg) ->
+      logger.setLogLevel(cfg.log_level) if cfg.log_level?
       new ApiClient(cfg)
 

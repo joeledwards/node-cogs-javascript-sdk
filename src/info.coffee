@@ -5,6 +5,7 @@ request = require 'request'
 
 config = require './config'
 errors = require './errors'
+logger = require './logger'
 
 class InfoClient
   constructor: (@cfg) ->
@@ -51,8 +52,11 @@ class InfoClient
 module.exports =
   getClient: (configPath) ->
     config.getConfig configPath
-    .then (cfg) -> new InfoClient(cfg)
+    .then (cfg) ->
+      logger.setLogLevel(cfg.log_level) if cfg.log_level?
+      new InfoClient(cfg)
   
   getClientWithConfig: (cfg) ->
+    logger.setLogLevel(cfg.log_level) if cfg.log_level?
     Q(new InfoClient(cfg))
 

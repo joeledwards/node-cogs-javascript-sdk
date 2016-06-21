@@ -2,6 +2,7 @@ FS = require 'fs'
 Joi = require 'joi'
 Q = require 'q'
 
+logger = require './logger'
 errors = require './errors'
 
 # valid the config object
@@ -16,9 +17,10 @@ validateConfig = (config) ->
       salt:   Joi.string().regex(/^[0-9a-fA-F]{64}$/).required()
       secret: Joi.string().regex(/^[0-9a-fA-F]{64}$/).required()
     }).optional()
-    http_request_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for HTTP requests.")
-    websocket_connect_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, "Default timeout of 30 seconds for WebSocket connects.")
-    websocket_auto_reconnect: Joi.boolean().optional().default(true, "Use this field to control auto-reconnect, on by default.")
+    http_request_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, 'Default timeout of 30,000 milliseconds for HTTP requests.')
+    websocket_connect_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, 'Default timeout of 30,000 milliseconds for WebSocket connects.')
+    websocket_auto_reconnect: Joi.boolean().optional().default(true, 'Use this field to control auto-reconnect, defaults to true.')
+    log_level: Joi.only('off', 'error', 'warn', 'info', 'verbose', 'debug').optional().default('error', 'Sets the log level for the SDK, defaults to "error"')
   })
   
   Q.nfcall Joi.validate, config, schema
@@ -34,10 +36,10 @@ parseConfig = (configJson) ->
       d.resolve config
     .catch (error) ->
       err = new errors.ConfigError("Error validating the config", error)
-      console.error err
+      logger.error err
       d.reject err
   catch error
-    console.error err
+    logger.error err
     err = new errors.ConfigError("Error parsing config JSON", error)
     d.reject err
   d.promise
