@@ -27,7 +27,6 @@ class PushWebSocket extends EventEmitter
     @pingerRef = null
     @messageCount = 0
     @lastMessageId = null
-    @initiatedClose = false
     @autoReconnect = @cfg.websocket_auto_reconnect ? true
 
   # Shutdown the WebSocket for good (prevents auto-reconnect)
@@ -42,14 +41,12 @@ class PushWebSocket extends EventEmitter
 
     if @sock?
       try
-        @initiatedClose = true
+        @autoReconnect = false
         @sock.close()
       catch error
         logger.error "Error while closing WebSocket: #{error}\n#{error.stack}"
       finally
         @sock = null
-
-    @removeAllListeners()
 
   # Alias to the close() method
   disconnect: -> @close()
@@ -93,7 +90,7 @@ class PushWebSocket extends EventEmitter
 
         # The WebSocket was closed
         @sock.once 'close', =>
-          if @autoReconnect == true and @initiatedClose != true
+          if @autoReconnect == true
             @sock = null
 
             if @pingerRef?
