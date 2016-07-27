@@ -28,7 +28,7 @@ validateWithJoi = (config) ->
 # validate and supplement the config object
 validateConfig = (configObj) ->
   d = Q.defer()
-  config = validateWithJoi(rawConfig)
+  config = validateWithJoi(configObj)
   .then (config) ->
     config.base_ws_url = config.base_url.replace(/http/, 'ws')
     d.resolve config
@@ -42,8 +42,8 @@ validateConfig = (configObj) ->
 parseConfig = (configJson) ->
   d = Q.defer()
   try
-    rawConfig = JSON.parse configJson
-    d.resolve validateConfig(rawConfig)
+    configObj = JSON.parse configJson
+    d.resolve validateConfig(configObj)
   catch error
     logger.error err
     err = new errors.ConfigError("Error parsing config JSON", error)
