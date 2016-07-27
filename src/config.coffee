@@ -6,7 +6,7 @@ logger = require './logger'
 errors = require './errors'
 
 # valid the config object
-validateConfig = (config) ->
+validateWithJoi = (config) ->
   schema = Joi.object().keys({
     base_url: Joi.string().uri().optional().default("https://api.cogswell.io", "URL for the Cogswell API.")
     api_key: Joi.object().keys({
@@ -25,19 +25,25 @@ validateConfig = (config) ->
   
   Q.nfcall Joi.validate, config, schema
 
+# validate and supplement the config object
+validateConfig = (configObj) ->
+  d = Q.defer()
+  config = validateWithJoi(rawConfig)
+  .then (config) ->
+    config.base_ws_url = config.base_url.replace(/http/, 'ws')
+    d.resolve config
+  .catch (error) ->
+    err = new errors.ConfigError("Error validating the config", error)
+    logger.error err
+    d.reject err
+  d.promise
+
 # parse the JSON into the config object
 parseConfig = (configJson) ->
   d = Q.defer()
   try
     rawConfig = JSON.parse configJson
-    config = validateConfig(rawConfig)
-    .then (config) ->
-      config.base_ws_url = config.base_url.replace(/http/, 'ws')
-      d.resolve config
-    .catch (error) ->
-      err = new errors.ConfigError("Error validating the config", error)
-      logger.error err
-      d.reject err
+    d.resolve validateConfig(rawConfig)
   catch error
     logger.error err
     err = new errors.ConfigError("Error parsing config JSON", error)

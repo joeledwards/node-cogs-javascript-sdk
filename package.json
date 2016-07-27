@@ -12,6 +12,7 @@
     "cogswell",
     "messaging",
     "message broker",
+    "push notifications",
     "pub/sub"
   ],
   "license": "ISC",
@@ -43,6 +44,6 @@
     "example": "coffee example.coffee",
     "prepublish": "cake build",
     "build": "cake build",
-    "test": "coffee test.coffee"
+    "test": "coffee test/test.coffee"
   }
 }
