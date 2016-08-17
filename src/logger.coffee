@@ -1,3 +1,4 @@
+_ = require 'lodash'
 moment = require 'moment'
 winston = require 'winston'
 
@@ -17,10 +18,11 @@ setupLogger = (level = 'error') ->
     })
 
 log = (level, text, args...) ->
-  if typeof text is string
-    logger.log level, "[cogs-sdk]: #{text}", args...
-  else
-    logger.log level, "[cogs-sdk]: ", text, args...
+  if logger?
+    if _.isString(text)
+      logger.log level, "[cogs-sdk]: #{text}", args...
+    else
+      logger.log level, "[cogs-sdk]: ", text, args...
 
 setupLogger()
 
@@ -32,10 +34,10 @@ module.exports =
   setVerboseLevel: -> setupLogger 'verbose'
   setDebugLevel: -> setupLogger 'debug'
   turnLoggerOff: -> setupLogger 'off'
-  log: (args...) -> logger.log args... if logger?
-  error: (args...) -> logger.error args... if logger?
-  warn: (args...) -> logger.warn args... if logger?
-  info: (args...) -> logger.info args... if logger?
-  verbose: (args...) -> logger.verbose args... if logger?
-  debug: (args...) -> logger.debug args... if logger?
+  log: (args...) -> log args...
+  error: (args...) -> log 'error', args...
+  warn: (args...) -> log 'warn', args...
+  info: (args...) -> log 'info', args...
+  verbose: (args...) -> log 'verbose', args...
+  debug: (args...) -> log 'debug', args...
 

@@ -1,4 +1,4 @@
-iassert = require 'assert'
+assert = require 'assert'
 durations = require '../src/index.coffee'
 
 describe "cogs-javascript-sdk", ->
