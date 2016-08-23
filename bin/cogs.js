@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 var _ = require('lodash');
-var Q = require('q');
-var fs = require('fs');
+var P = require('bluebird');
+var fs = P.promisifyAll(require('fs'));
 var program = require('commander');
 
 var cogs = require('../lib/index');
@@ -27,14 +27,20 @@ function beautify(json) {
 
 function findConfig(paths) {
   if (!paths || paths.length < 1)
-    return Q(undefined);
+    return P.resolve(undefined);
   else {
     var configFile = paths[0];
     var rest = paths.length > 1 ? paths.slice(1) : undefined;
 
-    var d = Q.defer();
-    fs.exists(configFile, (e) => d.resolve(e));
-    return d.promise.then((e) => e ? configFile : findConfig(rest));
+    return new P((resolve, reject) => {
+      fs.exists(configFile, exists => {
+        if (exists) {
+          resolve(configFile);
+        } else {
+          resolve(findConfig(rest));
+        }
+      });
+    });
   }
 }
 
@@ -55,7 +61,7 @@ function clientKey(client) {
       websocket_auto_reconnect: true
     };
 
-    Q.nfcall(fs.writeFile, clientFile, jsonify(clientConfig) + '\n')
+    fs.writeFileAsync(clientFile, jsonify(clientConfig) + "\n")
     .then(() => console.log(`Wrote new client config to ${clientFile}`));
   });
 }

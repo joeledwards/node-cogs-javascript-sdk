@@ -1,6 +1,7 @@
-FS = require 'fs'
+P = require 'bluebird'
 Joi = require 'joi'
-Q = require 'q'
+
+fs = P.promisifyAll(require('fs'))
 
 logger = require './logger'
 errors = require './errors'
@@ -23,54 +24,51 @@ validateWithJoi = (config) ->
     log_level: Joi.only('off', 'error', 'warn', 'info', 'verbose', 'debug').optional().default('error', 'Sets the log level for the SDK, defaults to "error"')
   })
   
-  Q.nfcall Joi.validate, config, schema
+  P.promisify(Joi.validate)(config, schema)
 
 # validate and supplement the config object
 validateConfig = (configObj) ->
-  d = Q.defer()
-  config = validateWithJoi(configObj)
-  .then (config) ->
-    config.base_ws_url = config.base_url.replace(/http/, 'ws')
-    d.resolve config
-  .catch (error) ->
-    err = new errors.ConfigError("Error validating the config", error)
-    logger.error err
-    d.reject err
-  d.promise
+  new P (resolve, reject) ->
+    config = validateWithJoi(configObj)
+    .then (config) ->
+      config.base_ws_url = config.base_url.replace(/http/, 'ws')
+      resolve config
+    .catch (error) ->
+      err = new errors.ConfigError("Error validating the config", error)
+      logger.error err
+      reject err
 
 # parse the JSON into the config object
 parseConfig = (configJson) ->
-  d = Q.defer()
-  try
-    configObj = JSON.parse configJson
-    d.resolve validateConfig(configObj)
-  catch error
-    logger.error err
-    err = new errors.ConfigError("Error parsing config JSON", error)
-    d.reject err
-  d.promise
+  new P (resolve, reject) ->
+    try
+      configObj = JSON.parse configJson
+      resolve validateConfig(configObj)
+    catch error
+      logger.error err
+      err = new errors.ConfigError("Error parsing config JSON", error)
+      reject err
 
 # read the config file
 readConfig = (configPath) ->
-  Q.nfcall FS.readFile, configPath
+  fs.readFileAsync configPath
   .then (configJson) ->
     parseConfig configJson
 
 # check config exists and read
 getConfig = (configPath) ->
-  d = Q.defer()
-  FS.exists configPath, (exists) ->
-    if not exists
-      d.reject new Error("Config file '#{configPath}' not found")
-    else
-      d.resolve readConfig(configPath)
-  d.promise
+  new P (resolve, reject) ->
+    fs.exists configPath, (exists) ->
+      if not exists
+        reject new Error("Config file '#{configPath}' not found")
+      else
+        resolve readConfig(configPath)
 
 # Parse a JSON file
 readJson = (path) ->
-  Q.nfcall FS.readFile, path
+  fs.readFileAsync path
   .then (raw) ->
-    Q(JSON.parse(raw))
+    P.try(JSON.parse(raw))
 
 # exports
 module.exports =

@@ -1,10 +1,10 @@
-Q = require 'q'
+P = require 'bluebird'
 cogs = require './src'
 
 cogs.info.getClient 'cogs-tools.json'
 
 .then (client) ->
-  Q.all [client.getApiDocs(), client.getBuildInfo()]
+  P.all [client.getApiDocs(), client.getBuildInfo()]
 
 .then (data) ->
   console.log "API Docs:\n#{JSON.stringify(data[0], null, 2)}"

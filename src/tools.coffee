@@ -1,6 +1,5 @@
 _ = require 'lodash'
-FS = require 'fs'
-Q = require 'q'
+P = require 'bluebird'
 moment = require 'moment'
 request = require 'request'
 
@@ -51,41 +50,38 @@ class ToolsClient
     @makeRequest 'POST', "/client_secret", data
 
   makeRequest: (method, path, data) ->
-    d = Q.defer()
-    
-    isGet = method == 'GET'
-    contentType = if not isGet then 'application/json' else undefined
-    jsonB64Header = if isGet then data.bufferB64 else undefined
-    payload = if not isGet then data.buffer else undefined
+    new P (resolve, reject) =>
+      isGet = method == 'GET'
+      contentType = if not isGet then 'application/json' else undefined
+      jsonB64Header = if isGet then data.bufferB64 else undefined
+      payload = if not isGet then data.buffer else undefined
 
-    url = "#{@baseUrl}#{path}"
-    options =
-      uri: url
-      method: method
-      headers:
-        'Payload-HMAC': data.hmac
-        'Content-Type': contentType
-        'JSON-Base64': jsonB64Header
-      body: payload
-      timeout: @cfg.http_request_timeout
+      url = "#{@baseUrl}#{path}"
+      options =
+        uri: url
+        method: method
+        headers:
+          'Payload-HMAC': data.hmac
+          'Content-Type': contentType
+          'JSON-Base64': jsonB64Header
+        body: payload
+        timeout: @cfg.http_request_timeout
 
-    request options, (error, response) ->
-      if error?
-        d.reject new errors.ToolsError("Error attempting to send a request to the Cogs server", error)
-      else if response.statusCode != 200
-        try
-          record = JSON.parse json
-          json = JSON.stringify record, null, 2
-          d.reject new errors.ToolsError("Received an error response from the server", undefined, response.statusCode, json)
-        catch error
-          d.reject new errors.ToolsError("Received an error response from the server", undefined, response.statusCode, response.body)
-      else
-        try
-          d.resolve JSON.parse(response.body)
-        catch error
-          d.reject new errors.ToolsError("Error parsing response body (expected valid JSON)", error)
-
-    d.promise
+      request options, (error, response) ->
+        if error?
+          reject new errors.ToolsError("Error attempting to send a request to the Cogs server", error)
+        else if response.statusCode != 200
+          try
+            record = JSON.parse json
+            json = JSON.stringify record, null, 2
+            reject new errors.ToolsError("Received an error response from the server", undefined, response.statusCode, json)
+          catch error
+            reject new errors.ToolsError("Received an error response from the server", undefined, response.statusCode, response.body)
+        else
+          try
+            resolve JSON.parse(response.body)
+          catch error
+            reject new errors.ToolsError("Error parsing response body (expected valid JSON)", error)
 
 
 # exports
@@ -98,5 +94,5 @@ module.exports =
   
   getClientWithConfig: (cfg) ->
     logger.setLogLevel(cfg.log_level) if cfg.log_level?
-    Q(new ToolsClient(cfg))
+    P.resolve(new ToolsClient(cfg))
 

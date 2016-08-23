@@ -1,5 +1,5 @@
 _ = require 'lodash'
-Q = require 'q'
+P = require 'bluebird'
 FS = require 'fs'
 moment = require 'moment'
 request = require 'request'
@@ -68,105 +68,103 @@ class PushWebSocket extends EventEmitter
 
   # Establishes the socket if it is not yet connected
   connect: ->
-    d = Q.defer()
-    if @sock?
-      d.resolve()
-    else
-      record = makeRecord @cfg
-      record.namespace = @namespace
-      record.attributes = @attributes
+    new P (resolve, reject) =>
+      if @sock?
+        resolve()
+      else
+        record = makeRecord @cfg
+        record.namespace = @namespace
+        record.attributes = @attributes
 
-      data = auth.signRecord @cfg.client_key.secret, record
+        data = auth.signRecord @cfg.client_key.secret, record
 
-      url = "#{@baseUrl}/push"
-      options =
-        headers:
-          'Payload-HMAC': data.hmac
-          'JSON-Base64': data.bufferB64
-        timeout: @cfg.websocket_connect_timeout
+        url = "#{@baseUrl}/push"
+        options =
+          headers:
+            'Payload-HMAC': data.hmac
+            'JSON-Base64': data.bufferB64
+          timeout: @cfg.websocket_connect_timeout
 
-      try
-        @sock = new WebSocket(url, options)
+        try
+          @sock = new WebSocket(url, options)
 
-        # The WebSocket was closed
-        @sock.once 'close', =>
-          if @autoReconnect == true
-            @sock = null
+          # The WebSocket was closed
+          @sock.once 'close', =>
+            if @autoReconnect == true
+              @sock = null
 
-            if @pingerRef?
-              try
-                clearInterval @pingerRef
-              catch error
-                logger.error "Error clearing pinger interval: #{error}\n#{error.stack}"
-              finally
-                @pingerRef = null
+              if @pingerRef?
+                try
+                  clearInterval @pingerRef
+                catch error
+                  logger.error "Error clearing pinger interval: #{error}\n#{error.stack}"
+                finally
+                  @pingerRef = null
 
-            reconnect = =>
-              @connect().then =>
-                logger.info "Push WebSocket replaced for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
-                @emit 'reconnect'
-              .catch (error) =>
-                logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : ${error}\n${error.stack}"
-                @emit 'error', error
-            
-            logger.info "Connection closed. Reconnecting in 5 seconds."
+              reconnect = =>
+                @connect().then =>
+                  logger.info "Push WebSocket replaced for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+                  @emit 'reconnect'
+                .catch (error) =>
+                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : ${error}\n${error.stack}"
+                  @emit 'error', error
+              
+              logger.info "Connection closed. Reconnecting in 5 seconds."
 
-            setTimeout reconnect, 5000
+              setTimeout reconnect, 5000
 
-          else
-            logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
-            @emit 'close'
+            else
+              logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+              @emit 'close'
 
-        # The WebSocket connection has been established
-        @sock.once 'open', =>
-          logger.info "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+          # The WebSocket connection has been established
+          @sock.once 'open', =>
+            logger.info "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
 
-          @emit 'open'
+            @emit 'open'
 
-          pinger = =>
-            @sock.ping()
+            pinger = =>
+              @sock.ping()
 
-          # Ping every 15 seconds to keep the connection alive 
-          @pingerRef = setInterval pinger, 15000
+            # Ping every 15 seconds to keep the connection alive 
+            @pingerRef = setInterval pinger, 15000
 
-          d.resolve()
+            resolve()
 
-        # An error occurred
-        @sock.on 'error', (error) =>
-          @emit 'error', error
+          # An error occurred
+          @sock.on 'error', (error) =>
+            @emit 'error', error
 
-          logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+            logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
 
-        # Received a message
-        @sock.on 'message', (msg) =>
-          @emit 'message', msg
+          # Received a message
+          @sock.on 'message', (msg) =>
+            @emit 'message', msg
 
-          try
-            @messageCount += 1
-            message = JSON.parse msg
-            @lastMessageId = message.message_id
-            @ack(message.messageId) if @autoAcknowledge == true
-          catch error
-            logger.error "Invalid push message received: #{error}\n#{error.stack}"
-
-        # WebSocket connection was rejected by the API
-        @sock.on 'unexpected-response', (req, res) =>
-          @emit 'unexpected-response', [req, res]
-
-          res.on 'data', (raw) ->
             try
-              record = JSON.parse json
-              json = JSON.stringify record, null, 2
-              d.reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
+              @messageCount += 1
+              message = JSON.parse msg
+              @lastMessageId = message.message_id
+              @ack(message.messageId) if @autoAcknowledge == true
             catch error
-              d.reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, raw)
+              logger.error "Invalid push message received: #{error}\n#{error.stack}"
+
+          # WebSocket connection was rejected by the API
+          @sock.on 'unexpected-response', (req, res) =>
+            @emit 'unexpected-response', [req, res]
+
+            res.on 'data', (raw) ->
+              try
+                record = JSON.parse json
+                json = JSON.stringify record, null, 2
+                reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
+              catch error
+                reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, raw)
+              false
             false
-          false
 
-      catch error
-        d.reject new errors.ApiError("Error creating the push WebSocket", error)
-
-    d.promise
+        catch error
+          reject new errors.ApiError("Error creating the push WebSocket", error)
 
 class ApiClient
   constructor: (@cfg) ->
@@ -177,16 +175,13 @@ class ApiClient
   clientSecret: -> @cfg?.client_key?.secret
 
   subscribe: (namespace, attributes, autoAcknowledge = true) ->
-    d = Q.defer()
-
-    try
-      ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
-      ws.connect()
-      d.resolve ws
-    catch error
-      d.reject error
-
-    d.promise
+    new P (resolve, reject) =>
+      try
+        ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
+        ws.connect()
+        resolve ws
+      catch error
+        reject error
 
   sendEvent: (namespace, eventName, attributes, tags = undefined, debugDirective = undefined) ->
     record = makeRecord @cfg
@@ -210,41 +205,38 @@ class ApiClient
     @makeRequest 'GET', "/message/#{messageId}", data
 
   makeRequest: (method, path, data) ->
-    d = Q.defer()
-    
-    isGet = method == 'GET'
-    contentType = if not isGet then 'application/json' else undefined
-    jsonB64Header = if isGet then data.bufferB64 else undefined
-    payload = if not isGet then data.buffer else undefined
+    return P (resolve, reject) ->
+      isGet = method == 'GET'
+      contentType = if not isGet then 'application/json' else undefined
+      jsonB64Header = if isGet then data.bufferB64 else undefined
+      payload = if not isGet then data.buffer else undefined
 
-    url = "#{@baseUrl}#{path}"
-    options =
-      uri: url
-      method: method
-      headers:
-        'Payload-HMAC': data.hmac
-        'Content-Type': contentType
-        'JSON-Base64': jsonB64Header
-      body: payload
-      timeout: @cfg.http_request_timeout
+      url = "#{@baseUrl}#{path}"
+      options =
+        uri: url
+        method: method
+        headers:
+          'Payload-HMAC': data.hmac
+          'Content-Type': contentType
+          'JSON-Base64': jsonB64Header
+        body: payload
+        timeout: @cfg.http_request_timeout
 
-    request options, (error, response) ->
-      if error?
-        d.reject new errors.ApiError("Error attempting to send a request to the Cogs server", error)
-      else if response.statusCode != 200
-        try
-          record = JSON.parse json
-          json = JSON.stringify record, null, 2
-          d.reject new errors.ApiError("Received an error response from the server", undefined, response.statusCode, json)
-        catch error
-          d.reject new errors.ApiError("Received an error response from the server", undefined, response.statusCode, response.body)
-      else
-        try
-          d.resolve JSON.parse(response.body)
-        catch error
-          d.reject new errors.ApiError("Error parsing response body (expected valid JSON)", error)
-
-    d.promise
+      request options, (error, response) ->
+        if error?
+          reject new errors.ApiError("Error attempting to send a request to the Cogs server", error)
+        else if response.statusCode != 200
+          try
+            record = JSON.parse json
+            json = JSON.stringify record, null, 2
+            reject new errors.ApiError("Received an error response from the server", undefined, response.statusCode, json)
+          catch error
+            reject new errors.ApiError("Received an error response from the server", undefined, response.statusCode, response.body)
+        else
+          try
+            resolve JSON.parse(response.body)
+          catch error
+            reject new errors.ApiError("Error parsing response body (expected valid JSON)", error)
 
 
 # exports
