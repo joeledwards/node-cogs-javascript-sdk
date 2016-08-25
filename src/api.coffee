@@ -1,15 +1,15 @@
 _ = require 'lodash'
 P = require 'bluebird'
-FS = require 'fs'
 moment = require 'moment'
 request = require 'request'
-WebSocket = require 'ws'
+websocket = require 'websocket'
 EventEmitter = require 'eventemitter3'
 
 auth = require './auth'
 config = require './config'
 errors = require './errors'
 logger = require './logger'
+WebSocket = require('./ws')()
 
 jsonify = (obj) -> JSON.stringify obj, null, 2
 
@@ -19,6 +19,8 @@ makeRecord = (cfg) ->
     access_key: cfg.api_key.access
     client_salt: cfg.client_key.salt
     timestamp: moment.utc().toISOString()
+
+isNode = -> window == undefined
 
 class PushWebSocket extends EventEmitter
   constructor: (@cfg, @namespace, @attributes, @autoAcknowledge = true) ->
@@ -68,7 +70,7 @@ class PushWebSocket extends EventEmitter
 
   # Establishes the socket if it is not yet connected
   connect: ->
-    new P (resolve, reject) =>
+    handler = (resolve, reject) =>
       if @sock?
         resolve()
       else
@@ -79,14 +81,13 @@ class PushWebSocket extends EventEmitter
         data = auth.signRecord @cfg.client_key.secret, record
 
         url = "#{@baseUrl}/push"
-        options =
-          headers:
-            'Payload-HMAC': data.hmac
-            'JSON-Base64': data.bufferB64
-          timeout: @cfg.websocket_connect_timeout
+        headers =
+          'Payload-HMAC': data.hmac
+          'JSON-Base64': data.bufferB64
+        timeout = @cfg.websocket_connect_timeout
 
         try
-          @sock = new WebSocket(url, options)
+          @sock = new WebSocket(url, headers, timeout)
 
           # The WebSocket was closed
           @sock.once 'close', =>
@@ -164,7 +165,10 @@ class PushWebSocket extends EventEmitter
             false
 
         catch error
+          console.error "Exception thrown while trying to establish push WebSocket:", error
           reject new errors.ApiError("Error creating the push WebSocket", error)
+
+    new P handler
 
 class ApiClient
   constructor: (@cfg) ->
@@ -175,13 +179,15 @@ class ApiClient
   clientSecret: -> @cfg?.client_key?.secret
 
   subscribe: (namespace, attributes, autoAcknowledge = true) ->
-    new P (resolve, reject) =>
+    handler = (resolve, reject) =>
       try
         ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
         ws.connect()
         resolve ws
       catch error
         reject error
+
+    new P handler
 
   sendEvent: (namespace, eventName, attributes, tags = undefined, debugDirective = undefined) ->
     record = makeRecord @cfg
@@ -205,13 +211,15 @@ class ApiClient
     @makeRequest 'GET', "/message/#{messageId}", data
 
   makeRequest: (method, path, data) ->
-    return P (resolve, reject) ->
+    url = "#{@baseUrl}#{path}"
+    timeout = @cfg.http_request_timeout
+
+    handler = (resolve, reject) ->
       isGet = method == 'GET'
       contentType = if not isGet then 'application/json' else undefined
       jsonB64Header = if isGet then data.bufferB64 else undefined
       payload = if not isGet then data.buffer else undefined
 
-      url = "#{@baseUrl}#{path}"
       options =
         uri: url
         method: method
@@ -220,7 +228,7 @@ class ApiClient
           'Content-Type': contentType
           'JSON-Base64': jsonB64Header
         body: payload
-        timeout: @cfg.http_request_timeout
+        timeout: timeout
 
       request options, (error, response) ->
         if error?
@@ -237,6 +245,8 @@ class ApiClient
             resolve JSON.parse(response.body)
           catch error
             reject new errors.ApiError("Error parsing response body (expected valid JSON)", error)
+
+    new P handler
 
 
 # exports
