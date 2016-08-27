@@ -1,3 +1,4 @@
+P = require 'bluebird'
 EventEmitter = require 'eventemitter3'
 {client: nodeWs, w3cwebsocket: browserWs} = require 'websocket'
 
@@ -45,6 +46,21 @@ class NodeWS extends BaseWS
     @connection = null
     @socket = null
 
+  ping: ->
+    @connection.ping() if @connection?
+
+  send: (data) ->
+    new P((resolve, reject) => 
+      if @connection?
+        @connection.send data, (error) ->
+          if error?
+            reject error
+          else
+            resolve()
+      else
+        reject new Error("Not connected.")
+    )
+
 
 # Browser WebSocket
 class BrowserWS extends BaseWS
@@ -76,6 +92,21 @@ class BrowserWS extends BaseWS
     if @socket?
       @socket.close()
     @socket = null
+
+  ping: ->
+    @socket.ping() if @socket?
+
+  send: (data) ->
+    new P((resolve, reject) ->
+      if @socket?
+        @socket.send data, (error) ->
+          if error?
+            reject error
+          else
+            resolve()
+      else
+        reject "Not connected."
+    )
     
 
 isNode = new Function "try {return this===global;}catch(e){return false;}"

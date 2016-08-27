@@ -2,7 +2,6 @@ _ = require 'lodash'
 P = require 'bluebird'
 moment = require 'moment'
 request = require 'request'
-websocket = require 'websocket'
 EventEmitter = require 'eventemitter3'
 
 auth = require './auth'
@@ -59,11 +58,16 @@ class PushWebSocket extends EventEmitter
       acknowledgement =
         event: "message-received"
         message_id: messageId
-      @sock.send JSON.stringify(acknowledgement), (error) =>
-        if error?
-          logger.error "Error sending acknowledgement for message '#{messageId}': #{error}\n#{error.stack}"
-        else
-          @emit 'acked', messageId
+
+      logger.verbose "Acknowledging message #{messageId} with payload #{acknowledgement}"
+
+      @sock.send JSON.stringify(acknowledgement)
+      .then =>
+        @emit 'acked', messageId
+      .catch (error) ->
+        logger.error "Error sending acknowledgement for message '#{messageId}': #{error}\n#{error.stack}"
+    else
+      logger.warn "The connection is not open, therefore message '#{messageId}' cannot be acknowledged."
 
   # Alias to the ack() method
   acknowledge: (messageId) -> @ack messageId
@@ -104,10 +108,10 @@ class PushWebSocket extends EventEmitter
 
               reconnect = =>
                 @connect().then =>
-                  logger.info "Push WebSocket replaced for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+                  logger.info "Push WebSocket replaced for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
                   @emit 'reconnect'
                 .catch (error) =>
-                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : ${error}\n${error.stack}"
+                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)} : ${error}\n${error.stack}"
                   @emit 'error', error
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
@@ -115,12 +119,12 @@ class PushWebSocket extends EventEmitter
               setTimeout reconnect, 5000
 
             else
-              logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+              logger.info "Push WebSocket closed for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
               @emit 'close'
 
           # The WebSocket connection has been established
           @sock.once 'open', =>
-            logger.info "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+            logger.info "Push WebSocket opened for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
 
             @emit 'open'
 
@@ -136,11 +140,13 @@ class PushWebSocket extends EventEmitter
           @sock.on 'error', (error) =>
             @emit 'error', error
 
-            logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+            logger.error "WebSocket error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
 
           # Received a message
           @sock.on 'message', (msg) =>
             @emit 'message', msg
+
+            logger.verbose "Received message from namespace '#{@namespace}' channel #{jsonify(@attributes)} :", msg
 
             try
               @messageCount += 1
