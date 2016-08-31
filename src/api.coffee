@@ -195,6 +195,15 @@ class ApiClient
 
     @makeRequest 'POST', "/event", data
 
+  getChannelSummary: (namespace, attributes) ->
+    record = makeRecord @cfg
+    record.namespace = namespace
+    record.attributes = attributes
+
+    data = auth.signRecord @cfg.client_key.secret, record
+
+    @makeRequest 'POST', "/channel_summary", data
+
   getMessage: (namespace, attributes, messageId) ->
     record = makeRecord @cfg
     record.namespace = namespace
@@ -205,7 +214,7 @@ class ApiClient
     @makeRequest 'GET', "/message/#{messageId}", data
 
   makeRequest: (method, path, data) ->
-    return P (resolve, reject) ->
+    new P (resolve, reject) =>
       isGet = method == 'GET'
       contentType = if not isGet then 'application/json' else undefined
       jsonB64Header = if isGet then data.bufferB64 else undefined

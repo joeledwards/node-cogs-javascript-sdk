@@ -10,6 +10,7 @@ errors = require './errors'
 validateWithJoi = (config) ->
   schema = Joi.object().keys({
     base_url: Joi.string().uri().optional().default("https://api.cogswell.io", "URL for the Cogswell API.")
+    base_ws_url: Joi.string().uri().optional().default("wss://api.cogswell.io", "URL for the Cogswell WebSocket API.")
     api_key: Joi.object().keys({
       access: Joi.string().regex(/^[0-9a-fA-F]{32}$/).required()
       secret: Joi.string().regex(/^[0-9a-fA-F]{128}$/).optional()
@@ -31,7 +32,8 @@ validateConfig = (configObj) ->
   new P (resolve, reject) ->
     config = validateWithJoi(configObj)
     .then (config) ->
-      config.base_ws_url = config.base_url.replace(/http/, 'ws')
+      if not config.base_ws_url?
+        config.base_ws_url = config.base_url.replace(/http/, 'ws')
       resolve config
     .catch (error) ->
       err = new errors.ConfigError("Error validating the config", error)
