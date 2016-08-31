@@ -111,7 +111,7 @@ class PushWebSocket extends EventEmitter
                   logger.info "Push WebSocket replaced for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
                   @emit 'reconnect'
                 .catch (error) =>
-                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)} : ${error}\n${error.stack}"
+                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
                   @emit 'error', error
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
