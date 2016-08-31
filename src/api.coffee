@@ -207,6 +207,15 @@ class ApiClient
 
     @makeRequest 'POST', "/event", data
 
+  getChannelSummary: (namespace, attributes) ->
+    record = makeRecord @cfg
+    record.namespace = namespace
+    record.attributes = attributes
+
+    data = auth.signRecord @cfg.client_key.secret, record
+
+    @makeRequest 'POST', "/channel_summary", data
+
   getMessage: (namespace, attributes, messageId) ->
     record = makeRecord @cfg
     record.namespace = namespace
@@ -217,24 +226,21 @@ class ApiClient
     @makeRequest 'GET', "/message/#{messageId}", data
 
   makeRequest: (method, path, data) ->
-    url = "#{@baseUrl}#{path}"
-    timeout = @cfg.http_request_timeout
-
-    handler = (resolve, reject) ->
+    new P (resolve, reject) =>
       isGet = method == 'GET'
       contentType = if not isGet then 'application/json' else undefined
       jsonB64Header = if isGet then data.bufferB64 else undefined
       payload = if not isGet then data.buffer else undefined
 
       options =
-        uri: url
+        uri: "#{@baseUrl}#{path}"
         method: method
         headers:
           'Payload-HMAC': data.hmac
           'Content-Type': contentType
           'JSON-Base64': jsonB64Header
         body: payload
-        timeout: timeout
+        timeout: @cfg.http_request_timeout
 
       request options, (error, response) ->
         if error?
@@ -251,9 +257,6 @@ class ApiClient
             resolve JSON.parse(response.body)
           catch error
             reject new errors.ApiError("Error parsing response body (expected valid JSON)", error)
-
-    new P handler
-
 
 # exports
 module.exports =
