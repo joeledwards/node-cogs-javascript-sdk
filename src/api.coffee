@@ -124,7 +124,7 @@ class PushWebSocket extends EventEmitter
             @emit 'open'
 
             pinger = =>
-              @sock.ping()
+              @sock.ping() if @sock?
 
             # Ping every 15 seconds to keep the connection alive 
             @pingerRef = setInterval pinger, 15000
