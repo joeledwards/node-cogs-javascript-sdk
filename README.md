@@ -2,6 +2,8 @@
 
 [![Version npm](https://img.shields.io/npm/v/cogs-sdk.svg?style=flat-square)](http://browsenpm.org/package/cogs-sdk)
 
+NOTE: There are breaking changes moving from version 2.x to 3.x. Please look at the client API's subscribe function below for the new example.
+
 This module contains the JavaScript SDKs for the various Cogs APIs.
 * Info - Informational APIs requiring no authentication.
 * Tools - Customer APIs which are meant for Cogs' users' internal use only (not client apps, websites, or devices). These require authentication using customer API key credentials.
