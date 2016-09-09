@@ -77,6 +77,7 @@ class PushWebSocket extends EventEmitter
         record.attributes = @attributes
 
         data = auth.signRecord @cfg.client_key.secret, record
+        hasConnected = false
 
         url = "#{@baseUrl}/push"
         options =
@@ -114,12 +115,18 @@ class PushWebSocket extends EventEmitter
               setTimeout reconnect, 5000
 
             else
-              logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
               @emit 'close'
+              if hasConnected
+                logger.info "Push WebSocket closed for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+              else
+                message = "Websocket closed before the connection was established for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+                logger.info message
+                reject new Error(message)
 
           # The WebSocket connection has been established
           @sock.once 'open', =>
             logger.info "Push WebSocket opened for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+            hasConnected = true
 
             @emit 'open'
 
@@ -135,7 +142,11 @@ class PushWebSocket extends EventEmitter
           @sock.on 'error', (error) =>
             @emit 'error', error
 
-            logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+            if not hasConnected
+              logger.error "WebSocket connect error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+              reject error
+            else
+              logger.error "WebSocket error for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
 
           # Received a message
           @sock.on 'message', (msg) =>
@@ -153,6 +164,8 @@ class PushWebSocket extends EventEmitter
           @sock.on 'unexpected-response', (req, res) =>
             @emit 'unexpected-response', [req, res]
 
+            logger.error "Unexpected response to WebSocket connect for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
+
             res.on 'data', (raw) ->
               try
                 record = JSON.parse json
@@ -164,6 +177,7 @@ class PushWebSocket extends EventEmitter
             false
 
         catch error
+          logger.error "Error creating WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)}"
           reject new errors.ApiError("Error creating the push WebSocket", error)
 
 class ApiClient
