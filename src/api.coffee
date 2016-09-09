@@ -83,6 +83,7 @@ class PushWebSocket extends EventEmitter
         record.attributes = @attributes
 
         data = auth.signRecord @cfg.client_key.secret, record
+        hasConnected = false
 
         url = "#{@baseUrl}/push"
         headers =
@@ -111,7 +112,7 @@ class PushWebSocket extends EventEmitter
                   logger.info "Push WebSocket replaced for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
                   @emit 'reconnect'
                 .catch (error) =>
-                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' topic #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
                   @emit 'error', error
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
@@ -119,17 +120,23 @@ class PushWebSocket extends EventEmitter
               setTimeout reconnect, 5000
 
             else
-              logger.info "Push WebSocket closed for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
               @emit 'close'
+              if hasConnected
+                logger.info "Push WebSocket closed for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+              else
+                message = "Websocket closed before the connection was established for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+                logger.info message
+                reject new Error(message)
 
           # The WebSocket connection has been established
           @sock.once 'open', =>
             logger.info "Push WebSocket opened for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+            hasConnected = true
 
             @emit 'open'
 
             pinger = =>
-              @sock.ping()
+              @sock.ping() if @sock?
 
             # Ping every 15 seconds to keep the connection alive 
             @pingerRef = setInterval pinger, 15000
@@ -140,7 +147,11 @@ class PushWebSocket extends EventEmitter
           @sock.on 'error', (error) =>
             @emit 'error', error
 
-            logger.error "WebSocket error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+            if not hasConnected
+              logger.error "WebSocket connect error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+              reject error
+            else
+              logger.error "WebSocket error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
 
           # Received a message
           @sock.on 'message', (msg) =>
@@ -160,6 +171,8 @@ class PushWebSocket extends EventEmitter
           @sock.on 'unexpected-response', (req, res) =>
             @emit 'unexpected-response', [req, res]
 
+            logger.error "Unexpected response to WebSocket connect for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+
             res.on 'data', (raw) ->
               try
                 record = JSON.parse json
@@ -171,7 +184,7 @@ class PushWebSocket extends EventEmitter
             false
 
         catch error
-          console.error "Exception thrown while trying to establish push WebSocket:", error
+          logger.error "Error creating WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
           reject new errors.ApiError("Error creating the push WebSocket", error)
 
     new P handler
@@ -189,7 +202,8 @@ class ApiClient
       try
         ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
         ws.connect()
-        resolve ws
+        .then -> resolve ws
+        .catch (error) -> reject error
       catch error
         reject error
 
