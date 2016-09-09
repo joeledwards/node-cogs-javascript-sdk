@@ -27,13 +27,13 @@ var cogs = require('cogs-javascript-sdk');
 
 cogs.info.getClient('cogs-tools.json')
 .then((client) => {
-    return client.getApiDocs();
+  return client.getApiDocs();
 })
 .then((docs) => {
-    console.log(`Cogs API Docs:\n${JSON.stringify(docs, null, 2)}`);
+  console.log(`Cogs API Docs:\n${JSON.stringify(docs, null, 2)}`);
 })
 .catch((error) => {
-    console.error(`Error fetching the Cogs API docs: ${error}\n${error.stack}`);
+  console.error(`Error fetching the Cogs API docs: ${error}\n${error.stack}`);
 });
 ```
 
@@ -46,13 +46,13 @@ var cogs = require('cogs-javascript-sdk');
 
 cogs.info.getClient('cogs-tools.json')
 .then((client) => {
-    return client.getBuildInfo();
+  return client.getBuildInfo();
 })
 .then((docs) => {
-    console.log(`Cogs Build Info:\n${JSON.stringify(docs, null, 2)}`);
+  console.log(`Cogs Build Info:\n${JSON.stringify(docs, null, 2)}`);
 })
 .catch((error) => {
-    console.error(`Error fetching the Cogs build info: ${error}\n${error.stack}`);
+  console.error(`Error fetching the Cogs build info: ${error}\n${error.stack}`);
 });
 ```
 
@@ -69,13 +69,13 @@ var namespace = 'my-namespace';
 
 cogs.tools.getClient('cogs-tools.json')
 .then((client) => {
-    return client.getNamespaceSchema(namespace);
+  return client.getNamespaceSchema(namespace);
 })
 .then((schema) => {
-    console.log(`Schema for namespace '${namespace}':\n${JSON.stringify(schema, null, 2)}`);
+  console.log(`Schema for namespace '${namespace}':\n${JSON.stringify(schema, null, 2)}`);
 })
 .catch((error) => {
-    console.error(`Error fetching the schema for namespace ${namespace}: ${error}\n${error.stack}`);
+  console.error(`Error fetching the schema for namespace ${namespace}: ${error}\n${error.stack}`);
 });
 ```
 
@@ -87,13 +87,13 @@ var cogs = require('cogs-javascript-sdk');
 
 cogs.tools.getClient('cogs-tools.json')
 .then((client) => {
-    return client.newRandomUuid();
+  return client.newRandomUuid();
 })
 .then((uuid) => {
-    console.log(`New Random UUID:\n${uuid}`);
+  console.log(`New Random UUID:\n${uuid}`);
 })
 .catch((error) => {
-    console.error(`Error generatoring new random UUID: ${error}\n${error.stack}`);
+  console.error(`Error generatoring new random UUID: ${error}\n${error.stack}`);
 });
 ```
 
@@ -105,13 +105,13 @@ var cogs = require('cogs-javascript-sdk');
 
 cogs.tools.getClient('cogs-tools.json')
 .then((client) => {
-    return client.newClientKey();
+  return client.newClientKey();
 })
 .then((clientKey) => {
-    console.log(`New Cogs Client Key:\n${JSON.stringify(docs, null, 2)}`);
+  console.log(`New Cogs Client Key:\n${JSON.stringify(docs, null, 2)}`);
 })
 .catch((error) => {
-    console.error(`Error generating new Cogs client key: ${error}\n${error.stack}`);
+  console.error(`Error generating new Cogs client key: ${error}\n${error.stack}`);
 });
 ```
 
@@ -128,21 +128,21 @@ var cogs = require('cogs-javascript-sdk');
 var namespace = 'my-namespace';
 var eventName = 'my-event'
 var attributes = {
-    'my-id-attribute': 12,
-    'my-name': 'Bob',
-    'my-boolean': true
+  'my-id-attribute': 12,
+  'my-name': 'Bob',
+  'my-boolean': true
 };
 var tags = ['foo', 'bar'];
 
 cogs.client.getClient('cogs-client.json')
 .then((client) => {
-    return client.sendEvent(namespace, eventName, attributes, tags);
+  return client.sendEvent(namespace, eventName, attributes, tags);
 })
 .then(() => {
-    console.log('Event successfully sent.');
+  console.log('Event successfully sent.');
 })
 .catch((error) => {
-    console.error(`Error sending event: ${error}\n${error.stack}`);
+  console.error(`Error sending event: ${error}\n${error.stack}`);
 });
 ```
 
@@ -155,19 +155,19 @@ var cogs = require('cogs-javascript-sdk');
 var namespace = 'my-namespace';
 var eventName = 'my-event'
 var attributes = {
-    'my-id-attribute': 12
+  'my-id-attribute': 12
 };
 var tags = ['foo', 'bar'];
 
 cogs.client.getClient('cogs-client.json')
 .then(client => {
-    return client.getChannelSummary(namespace, attributes);
+  return client.getChannelSummary(namespace, attributes);
 })
 .then(summary => {
-    console.log('Channel summary is:', summary);
+  console.log('Channel summary is:', summary);
 })
 .catch(error => {
-    console.error(`Error sending event: ${error}\n${error.stack}`);
+  console.error(`Error sending event: ${error}\n${error.stack}`);
 });
 ```
 
@@ -185,13 +185,13 @@ var messageId = 'deadbeef-dead-beef-dead-beefdeadbeef';
 
 cogs.client.getClient('cogs-client.json')
 .then((client) => {
-    return client.getMessage(namespace, topicAttributes, messageId);
+  return client.getMessage(namespace, topicAttributes, messageId);
 })
 .then((message) => {
-    console.log(`Successfully retrieved message:\n${JSON.stringify(message, null, 2)}`);
+  console.log(`Successfully retrieved message:\n${JSON.stringify(message, null, 2)}`);
 })
 .catch((error) => {
-    console.error(`Error fetching message '${messageId}': ${error}\n${error.stack}`);
+  console.error(`Error fetching message '${messageId}': ${error}\n${error.stack}`);
 });
 ```
 
@@ -204,13 +204,14 @@ var cogs = require('cogs-javascript-sdk');
 
 var namespace = 'my-namespace';
 var topicAttributes = {
-    'my-id-attribute': 12
+  'my-id-attribute': 12
 };
 
 cogs.client.getClient('cogs-client.json')
-.then((client) => client.subscribe(namespace, topicAttributes))
-.then((ws) => {
+.then(client => {
   return new Promise((resolve, reject) => {
+    const ws = client.subscribe(namespace, topicAttributes)) 
+    
     ws.on('error', error => {
       console.error('Error in push WebSocket', error)
 
@@ -224,8 +225,8 @@ cogs.client.getClient('cogs-client.json')
         reject(error);
       }
     });
+    
     ws.on('reconnect', () => console.log('Push WebSocket replaced.'));
-
     ws.on('open', () => console.log('Push WebSocket established.'));
     ws.on('close', () => {
       console.log('Push WebSocket closed.')
@@ -238,11 +239,14 @@ cogs.client.getClient('cogs-client.json')
       ws.close(); // Alias to ws.disconnect()
     });
 
-    ws.on('connectFailed', error => console.error('Error upgrading GET request to WebSocket', error));
- });
+    ws.on('connectFailed', error => {
+      console.error('Error upgrading GET request to WebSocket', error)
+      reject(error);
+    });
+  });
 })
 .catch(error => {
-    console.error(`Error establishing push WebSocket: ${error}\n${error.stack}`);
+  console.error(`Error establishing push WebSocket: ${error}\n${error.stack}`);
 });
 ```
 

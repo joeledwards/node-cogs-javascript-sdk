@@ -39,59 +39,59 @@ tools.getClient configFile
 .then (client) ->
   console.log "Subscribing to channel #{JSON.stringify(channel)}"
 
-  client.subscribe namespace, getAttributes(), false, 'echo-as-message'
+  messageHandler = (resolve, reject) ->
+    ws = client.subscribe namespace, getAttributes(), false, 'echo-as-message'
 
-  .then (ws) ->
-    new P (resolve, reject) ->
-      ws.once 'close', ->
-        console.log 'Connection closed.'
-        resolve()
+    ws.once 'close', ->
+      console.log 'Connection closed.'
+      resolve()
 
-      ws.on 'message', (message) ->
-        msgCount += 1
-        currCount = msgCount
-        console.log "Received Message:\n#{beautify(message)}"
+    ws.on 'message', (message) ->
+      msgCount += 1
+      currCount = msgCount
+      console.log "Received Message:\n#{beautify(message)}"
 
-        msg = JSON.parse message
+      msg = JSON.parse message
 
-        ws.ack msg.message_id
+      ws.ack msg.message_id
 
-        client.getMessage namespace, channel, msg.message_id
-        .then (message) ->
-          console.log "Fetched #{currCount} of 2 messages [#{msg.message_id}]"
-          ws.close() if msgCount > 1
-        .catch (error) ->
-          console.error "Error fetching message:", error
-          ws.close()
+      client.getMessage namespace, channel, msg.message_id
+      .then (message) ->
+        console.log "Fetched #{currCount} of 2 messages [#{msg.message_id}]"
+        ws.close() if msgCount > 1
+      .catch (error) ->
+        console.error "Error fetching message:", error
+        ws.close()
 
-      ws.once 'ack', (messageId) ->
-        console.log "A message has been acknowledged #{messageId}"
+    ws.once 'ack', (messageId) ->
+      console.log "A message has been acknowledged #{messageId}"
 
-      ws.once 'error', (error) ->
-        console.error "Error in push WebSocket:", error
+    ws.once 'error', (error) ->
+      console.error "Error in push WebSocket:", error
+      ws.close()
+  
+
+    ws.once 'connectFailed', (error) ->
+      console.error "Error connecting push WebSocket:", error
+      reject error
+
+    ws.once 'open', ->
+      console.log "Push WebSocket opened."
+
+      sendAnEvent client
+      .then -> sendAnEvent client
+      .catch (error) ->
+        console.error "Error sending an event:", error
         ws.close()
         reject error
 
-      ws.once 'connectFailed', (error) ->
-        console.error "Error connecting push WebSocket:", error
-        reject error
-
-      ws.once 'open', ->
-        console.log "Push WebSocket opened."
-
-        sendAnEvent client
-        .then -> sendAnEvent client
-        .catch (error) ->
-          console.error "Error sending an event:", error
-          ws.close()
-          reject error
-
-    .then ->
-      client.getChannelSummary namespace, getAttributes()
-      .then (summary) ->
-        console.log "Channel summary:", summary
-      .catch (error) ->
-        console.error "Error fetching channel summary:", error
+  new P(messageHandler)
+  .then ->
+    client.getChannelSummary namespace, getAttributes()
+    .then (summary) ->
+      console.log "Channel summary:", summary
+    .catch (error) ->
+      console.error "Error fetching channel summary:", error
 
   .catch (error) ->
     console.error "Error subscribing to push WebSocket:", error

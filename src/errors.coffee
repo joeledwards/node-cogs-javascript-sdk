@@ -13,16 +13,16 @@ class CogsError extends Error
     "#{@message}#{statusCode}#{details}#{stack}#{causeStack}"
 
 class ConfigError extends CogsError
-  constructor: (@message, @cause) ->
-    super @message, @cause
+  constructor: (@message, @cause) -> super @message, @cause
 
 class MonitorError extends CogsError
-  constructor: (@message, @cause) ->
-    super @message, @cause
+  constructor: (@message, @cause) -> super @message, @cause
 
 class TimeoutError extends CogsError
-  constructor: (@message, @cause) ->
-    super @message, @cause
+  constructor: (@message, @cause) -> super @message, @cause
+
+class PushError extends CogsError
+  constructor: (@message, @cause) -> super @message, @cause
 
 class ApiError extends CogsError
 class InfoError extends CogsError

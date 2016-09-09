@@ -74,7 +74,7 @@ class PushWebSocket extends EventEmitter
 
   # Establishes the socket if it is not yet connected
   connect: ->
-    handler = (resolve, reject) =>
+    new P (resolve, reject) =>
       if @sock?
         resolve()
       else
@@ -187,7 +187,6 @@ class PushWebSocket extends EventEmitter
           logger.error "Error creating WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
           reject new errors.ApiError("Error creating the push WebSocket", error)
 
-    new P handler
 
 class ApiClient
   constructor: (@cfg) ->
@@ -198,16 +197,14 @@ class ApiClient
   clientSecret: -> @cfg?.client_key?.secret
 
   subscribe: (namespace, attributes, autoAcknowledge = true) ->
-    handler = (resolve, reject) =>
-      try
-        ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
-        ws.connect()
-        .then -> resolve ws
-        .catch (error) -> reject error
-      catch error
-        reject error
-
-    new P handler
+    try
+      ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
+      ws.connect()
+      return ws
+    catch cause
+      error = new PushError("Error creating the subscription WebSocket '#{namespace}' channel #{jsonify(attributes)}", cause)
+      logger.error error
+      throw error
 
   sendEvent: (namespace, eventName, attributes, tags = undefined, debugDirective = undefined) ->
     record = makeRecord @cfg
