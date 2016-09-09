@@ -179,7 +179,8 @@ class ApiClient
       try
         ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
         ws.connect()
-        resolve ws
+        .then -> resolve ws
+        .catch (error) -> reject error
       catch error
         reject error
 
