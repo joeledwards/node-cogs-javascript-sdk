@@ -136,6 +136,7 @@ class PushWebSocket extends EventEmitter
             @emit 'open'
 
             pinger = =>
+              logger.verbose "Sending PING to keep the push WebSocket alive."
               @sock.ping() if @sock?
 
             # Ping every 15 seconds to keep the connection alive 

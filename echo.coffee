@@ -79,7 +79,8 @@ tools.getClient configFile
       console.log "Push WebSocket opened."
 
       sendAnEvent client
-      .then -> sendAnEvent client
+      .delay 1000
+      .then -> sendAnEvent(client)
       .catch (error) ->
         console.error "Error sending an event:", error
         ws.close()
