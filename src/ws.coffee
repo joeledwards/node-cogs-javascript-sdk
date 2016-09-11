@@ -4,6 +4,7 @@ EventEmitter = require 'eventemitter3'
 
 class BaseWS extends EventEmitter
   constructor: (url, headers, timeout) ->
+    super()
     @headers = headers
     @config =
       closeTimeout: timeout

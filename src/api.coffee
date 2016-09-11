@@ -74,7 +74,7 @@ class PushWebSocket extends EventEmitter
 
   # Establishes the socket if it is not yet connected
   connect: ->
-    new P (resolve, reject) =>
+    connectHandler = (resolve, reject) =>
       if @sock?
         resolve()
       else
@@ -168,26 +168,19 @@ class PushWebSocket extends EventEmitter
             catch error
               logger.error "Invalid push message received: #{error}\n#{error.stack}"
 
-          # WebSocket connection was rejected by the API
-          @sock.on 'unexpected-response', (req, res) =>
-            @emit 'unexpected-response', [req, res]
+          # WebSoket connection failure
+          @sock.once 'connectFailed', (error) ->
+            @emit 'connectFailed', error
 
-            logger.error "Unexpected response to WebSocket connect for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+            logger.error "Failed to connect to push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
 
-            res.on 'data', (raw) ->
-              try
-                record = JSON.parse json
-                json = JSON.stringify record, null, 2
-                reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
-              catch error
-                reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, raw)
-              false
-            false
+            reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
 
         catch error
           logger.error "Error creating WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
           reject new errors.ApiError("Error creating the push WebSocket", error)
 
+    new P(connectHandler)
 
 class ApiClient
   constructor: (@cfg) ->
@@ -201,7 +194,7 @@ class ApiClient
     try
       ws = new PushWebSocket(@cfg, namespace, attributes, autoAcknowledge)
       ws.connect()
-      return ws
+      ws
     catch cause
       error = new PushError("Error creating the subscription WebSocket '#{namespace}' channel #{jsonify(attributes)}", cause)
       logger.error error
