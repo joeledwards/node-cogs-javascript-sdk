@@ -156,7 +156,7 @@ class PushWebSocket extends EventEmitter
               @messageCount += 1
               message = JSON.parse msg
               @lastMessageId = message.message_id
-              @ack(message.messageId) if @autoAcknowledge == true
+              @ack(message.message_id) if @autoAcknowledge == true
             catch error
               logger.error "Invalid push message received: #{error}\n#{error.stack}"
 
