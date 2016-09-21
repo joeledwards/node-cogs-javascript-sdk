@@ -83,7 +83,6 @@ class ToolsClient
           catch error
             reject new errors.ToolsError("Error parsing response body (expected valid JSON)", error)
 
-
 # exports
 module.exports =
   getClient: (configPath) ->
