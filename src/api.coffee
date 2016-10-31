@@ -175,7 +175,7 @@ class PushWebSocket extends EventEmitter
 
             logger.error "Failed to connect to push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
 
-            reject new errors.ApiError("Server rejected the push WebSocket", undefined, res.statusCode, json)
+            reject new errors.ApiError("Server rejected the push WebSocket", error)
 
         catch error
           logger.error "Error creating WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
