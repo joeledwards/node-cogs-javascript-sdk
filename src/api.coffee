@@ -170,7 +170,7 @@ class PushWebSocket extends EventEmitter
               logger.error "Invalid push message received: #{error}\n#{error.stack}"
 
           # WebSoket connection failure
-          @sock.once 'connectFailed', (error) ->
+          @sock.once 'connectFailed', (error) =>
             @emit 'connectFailed', error
 
             logger.error "Failed to connect to push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
