@@ -23,7 +23,7 @@ isNode = -> window == undefined
 
 class PushWebSocket extends EventEmitter
   constructor: (@cfg, @namespace, @attributes, @autoAcknowledge = true) ->
-    @baseUrl = @cfg.base_ws_url
+    @baseWsUrl = @cfg.base_ws_url
     @sock = null
     @pingerRef = null
     @messageCount = 0
@@ -86,7 +86,7 @@ class PushWebSocket extends EventEmitter
         data = auth.signRecord @cfg.client_key.secret, record
         hasConnected = false
 
-        url = "#{@baseUrl}/push"
+        url = "#{@baseWsUrl}/push"
         headers =
           'Payload-HMAC': data.hmac
           'JSON-Base64': data.bufferB64
@@ -185,11 +185,13 @@ class PushWebSocket extends EventEmitter
 
 class ApiClient
   constructor: (@cfg) ->
-    @baseUrl = @cfg.base_url
+    @_initialized = true
 
-  accessKey: -> @cfg?.api_key?.access
-  clientSalt: -> @cfg?.client_key?.salt
-  clientSecret: -> @cfg?.client_key?.secret
+  baseUrl: -> @cfg?.base_url ? undefined
+  baseWsUrl: -> @cfg?.base_ws_url ? undefined
+  accessKey: -> @cfg?.api_key?.access ? undefined
+  clientSalt: -> @cfg?.client_key?.salt ? undefined
+  clientSecret: -> @cfg?.client_key?.secret ? undefined
 
   subscribe: (namespace, attributes, autoAcknowledge = true) ->
     try
@@ -239,7 +241,7 @@ class ApiClient
       payload = if not isGet then data.buffer else undefined
 
       options =
-        uri: "#{@baseUrl}#{path}"
+        uri: "#{@baseUrl()}#{path}"
         method: method
         headers:
           'Payload-HMAC': data.hmac

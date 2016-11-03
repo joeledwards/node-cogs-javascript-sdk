@@ -21,10 +21,12 @@ makeSigned = (cfg) ->
 
 class ToolsClient
   constructor: (@cfg) ->
-    @baseUrl = @cfg.base_url
+    @_initialized = true
 
-  accessKey: -> @cfg?.api_key?.access
-  secretKey: -> @cfg?.api_key?.secret
+  baseUrl: -> @cfg?.base_url ? undefined
+  baseWsUrl: -> @cfg?.base_ws_url ? undefined
+  accessKey: -> @cfg?.api_key?.access ? undefined
+  secretKey: -> @cfg?.api_key?.secret ? undefined
 
   getApiClientWithNewKey: ->
     @newClientKey()
@@ -56,7 +58,7 @@ class ToolsClient
       jsonB64Header = if isGet then data.bufferB64 else undefined
       payload = if not isGet then data.buffer else undefined
 
-      url = "#{@baseUrl}#{path}"
+      url = "#{@baseUrl()}#{path}"
       options =
         uri: url
         method: method

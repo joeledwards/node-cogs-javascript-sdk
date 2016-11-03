@@ -8,7 +8,9 @@ logger = require './logger'
 
 class InfoClient
   constructor: (@cfg) ->
-    @baseUrl = @cfg.base_url
+    @_initialized = true
+
+  baseUrl: -> @cfg?.base_url ? undefined
 
   getStatus: ->
     @makeRequest 'GET', "/status"
@@ -21,7 +23,7 @@ class InfoClient
 
   makeRequest: (method, path, data) ->
     new P (resolve, reject) =>
-      url = "#{@baseUrl}#{path}"
+      url = "#{@baseUrl()}#{path}"
       options =
         uri: url
         method: method

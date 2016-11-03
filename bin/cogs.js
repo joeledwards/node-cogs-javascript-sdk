@@ -46,9 +46,11 @@ function findConfig(paths) {
 
 function clientKey(client) {
   return client.newClientKey()
-  .then((clientKey) => {
+  .then(clientKey => {
     var clientFile = `cogs-client-${clientKey.client_salt.substr(0, 16)}.json`;
     var clientConfig = {
+      base_url: client.baseUrl(),
+      base_ws_url: client.baseWsUrl(),
       api_key: {
         access: client.accessKey()
       },
@@ -91,7 +93,7 @@ function runInfoCommand(command, args, configFile) {
 
 function runToolsCommand(command, args, configFile) {
   return cogs.tools.getClient(configFile)
-  .then((client) => {
+  .then(client => {
     switch(command) {
       case 'client-key': return clientKey(client);
       case 'random-uuid': return randomUuid(client);
@@ -101,19 +103,23 @@ function runToolsCommand(command, args, configFile) {
   });
 }
 
+let invalidCommand = true;
 function run(command, args, configFilePath) {
-  if (configFilePath)
+  invalidCommand = false;
+
+  if (configFilePath) {
     configPaths.unshift(configFilePath);
+  }
 
   findConfig(configPaths)
-  .then((configFile) => {
+  .then(configFile => {
     if (!configFile) {
       console.log(`Config file not found. Expected in one of the following locations:\n  ${_(configPaths).join('\n  ')}`);
       process.exit(1);
     }
 
     return configFile;
-  }).then((configFile) => {
+  }).then(configFile => {
     switch(command) {
       case 'build-info': return runInfoCommand(command, args, configFile);
       default: return runToolsCommand(command, args, configFile);
@@ -122,19 +128,22 @@ function run(command, args, configFilePath) {
   .catch((error) => console.log(`Unexpected error: ${error}\n${error.stack}`));
 }
 
-program.command('key [config]').action((config) => run('client-key', [], config));
-program.command('client-key [config]').action((config) => run('client-key', [], config));
+program.command('key [config]').action(config => run('client-key', [], config));
+program.command('client-key [config]').action(config => run('client-key', [], config));
 
-program.command('uuid [config]').action((config) => run('random-uuid', [], config));
-program.command('random-uuid [config]').action((config) => run('random-uuid', [], config));
+program.command('uuid [config]').action(config => run('random-uuid', [], config));
+program.command('random-uuid [config]').action(config => run('random-uuid', [], config));
 
 program.command('schema <namespace> [config]')
-.action((namespace, config) => run('namespace-schema', [namespace], config));
+  .action((namespace, config) => run('namespace-schema', [namespace], config));
 program.command('namespace-schema <namespace> [config]')
-.action((namespace, config) => run('namespace-schema', [namespace], config));
+  .action((namespace, config) => run('namespace-schema', [namespace], config));
 
-program.command('build [config]').action((config) => run('build-info', config));
-program.command('build-info [config]').action((config) => run('build-info', config));
+program.command('build [config]').action(config => run('build-info', config));
+program.command('build-info [config]').action(config => run('build-info', config));
 
 program.parse(process.argv);
 
+if (invalidCommand) {
+  program.outputHelp();
+}
