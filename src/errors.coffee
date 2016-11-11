@@ -24,6 +24,12 @@ class TimeoutError extends CogsError
 class PushError extends CogsError
   constructor: (@message, @cause) -> super @message, @cause
 
+class AuthKeyError extends CogsError
+  constructor: (@message, @cause) -> super @message, @cause
+
+class PubSubError extends CogsError
+  constructor: (@message, @cause) -> super @message, @cause
+
 class ApiError extends CogsError
 class InfoError extends CogsError
 class ToolsError extends CogsError
@@ -36,3 +42,4 @@ module.exports =
   MonitorError: MonitorError
   TimeoutError: TimeoutError
   ToolsError: ToolsError
+  AuthKeyError: AuthKeyError
