@@ -1,6 +1,7 @@
 _ = require 'lodash'
 P = require 'bluebird'
 Joi = require 'joi'
+LRU = require 'lru-cache'
 moment = require 'moment'
 request = require 'request'
 EventEmitter = require 'eventemitter3'
@@ -17,16 +18,19 @@ isNode = -> window == undefined
 
 class PubSubWebSocket extends EventEmitter
   constructor: (@keys, @options) ->
-    @baseWsUrl = options.baseWsUrl ? 'https://api.cogswell.io'
+    @baseWsUrl = options.baseWsUrl ? 'wss://api.cogswell.io'
     @connectTimeout = options.connectTimeout ? 5000
     @autoReconnect = options.autoReconnect ? true
     @pingInterval = options.pingInterval ? 15000
     @sock = null
     @pingerRef = null
     @messageCount = 0
-    @lastMessageId = null
     @sequence = 0
-    @outstanding = {}
+    @outstanding = LRU
+      max: 1000
+      maxAge: 60 * 1000
+      dispose: (sequence, info) ->
+        console.log "Discarded sequence #{sequence}"
     
   # Publish a message to a channel.
   publish: (channel, message) ->
@@ -35,15 +39,15 @@ class PubSubWebSocket extends EventEmitter
         seq = @sequence
         @sequence += 1
         
-        directive =
+        record =
           sequence: seq
           directive: 'publish'
           channel: channel
           message: message
         
-        @sock.send JSON.stringify(directive)
+        @sock.send JSON.stringify(record)
         .then =>
-          @outstanding[seq] =
+          @outstanding.set seq,
             resolve: resolve
             reject: reject
         .catch (error) ->
@@ -63,14 +67,14 @@ class PubSubWebSocket extends EventEmitter
         seq = @sequence
         @sequence += 1
         
-        directive =
+        record =
           sequence: seq
           directive: 'subscribe'
           channel: channel
         
-        @sock.send JSON.stringify(directive)
+        @sock.send JSON.stringify(record)
         .then =>
-          @outstanding[seq] =
+          @outstanding.set seq,
             resolve: resolve
             reject: reject
         .catch (error) ->
@@ -90,14 +94,14 @@ class PubSubWebSocket extends EventEmitter
         seq = @sequence
         @sequence += 1
         
-        directive =
+        record =
           sequence: seq
           directive: 'unsubscribe'
           channel: channel
         
-        @sock.send JSON.stringify(directive)
+        @sock.send JSON.stringify(record)
         .then =>
-          @outstanding[seq] =
+          @outstanding.set seq,
             resolve: resolve
             reject: reject
         .catch (error) ->
@@ -118,7 +122,7 @@ class PubSubWebSocket extends EventEmitter
       try
         clearInterval @pingerRef
       catch error
-        logger.error "Error clearing ping interval: #{error}\n#{error.stack}"
+        logger.error "Error clearing ping interval:", error
       finally
         @pingerRef = null
 
@@ -126,7 +130,7 @@ class PubSubWebSocket extends EventEmitter
       try
         @sock.close()
       catch error
-        logger.error "Error while closing WebSocket: #{error}\n#{error.stack}"
+        logger.error "Error while closing WebSocket:", error
       finally
         @sock = null
 
@@ -160,16 +164,16 @@ class PubSubWebSocket extends EventEmitter
                 try
                   clearInterval @pingerRef
                 catch error
-                  logger.error "Error clearing pinger interval: #{error}\n#{error.stack}"
+                  logger.error "Error clearing pinger interval:", error
                 finally
                   @pingerRef = null
 
               reconnect = =>
                 @connect().then =>
-                  logger.info "Push WebSocket replaced for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+                  logger.info "Pub/Sub WebSocket replaced."
                   @emit 'reconnect'
                 .catch (error) =>
-                  logger.error "Error replacing push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+                  logger.error "Error replacing Pub/Sub WebSocket", error
                   @emit 'error', error
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
@@ -179,21 +183,21 @@ class PubSubWebSocket extends EventEmitter
             else
               @emit 'close'
               if hasConnected
-                logger.info "Push WebSocket closed for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+                logger.info "Pub/Sub WebSocket closed."
               else
-                message = "Websocket closed before the connection was established for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+                message = "Websocket closed before the connection was established"
                 logger.info message
                 reject new Error(message)
 
           # The WebSocket connection has been established
           @sock.once 'open', =>
-            logger.info "Push WebSocket opened for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+            logger.info "Pub/Sub WebSocket opened."
             hasConnected = true
 
             @emit 'open'
 
             pinger = =>
-              logger.verbose "Sending PING to keep the push WebSocket alive."
+              logger.verbose "Sending PING to keep the Pub/Sub WebSocket alive."
               @sock.ping() if @sock?
 
             # Ping every 15 seconds to keep the connection alive 
@@ -206,30 +210,39 @@ class PubSubWebSocket extends EventEmitter
             @emit 'error', error
 
             if not hasConnected
-              logger.error "WebSocket connect error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+              logger.error "WebSocket connect error:", error
               reject error
             else
-              logger.error "WebSocket error for namespace '#{@namespace}' channel #{jsonify(@attributes)} : #{error}\n#{error.stack}"
+              logger.error "WebSocket error:", error
 
           # Received a message
           @sock.on 'message', (msg) =>
-            @emit 'message', msg
-
-            logger.verbose "Received message from namespace '#{@namespace}' channel #{jsonify(@attributes)} :", msg
+            logger.verbose "Received a message:", msg
 
             try
               @messageCount += 1
               message = JSON.parse msg
-              @lastMessageId = message.message_id
-              @ack(message.message_id) if @autoAcknowledge == true
+
+              if message.sequence?
+                {resolve, reject} = @outstanding.get message.sequence
+
+                if message.code != 200
+                  resolve
+                    channel: message.channel
+                    message: message.message
+                else
+                  reject
+                    new errors.PubSubError message.message, null, message.code
+              else if message.id?
+                @emit 'message', msg
             catch error
-              logger.error "Invalid push message received: #{error}\n#{error.stack}"
+              logger.error "Invalid message received: #{error}\n#{error.stack}"
 
           # WebSoket connection failure
           @sock.once 'connectFailed', (error) =>
             @emit 'connectFailed', error
 
-            logger.error "Failed to connect to push WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
+            logger.error "Failed to connect to Pub/Sub WebSocket"
 
             reject new errors.ApiError("Server rejected the push WebSocket", error)
 
