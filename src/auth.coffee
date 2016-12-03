@@ -1,28 +1,11 @@
 _ = require 'lodash'
 crypto = require 'crypto'
 moment = require 'moment'
+xor = require 'buffer-xor'
 
 errors = require './errors'
 
 KEY_PARTS = ['R', 'W', 'A']
-
-# XOR two buffers together.
-xor = (a, b) ->
-  if not Buffer.isBuffer a
-    a = new Buffer a
-  if not Buffer.isBuffer b
-    b = new Buffer b
-
-  res = []
-
-  if a.length > b.length
-    t = a
-    a = b
-    b = t
-  
-  [0...b.length].forEach (i) -> res.push(a[i] ^ b[i])
-
-  new Buffer res
 
 # Parse and validate a project key.
 splitKey = (key) ->
