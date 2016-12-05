@@ -231,8 +231,7 @@ class PubSubWebSocket extends EventEmitter
                     channel: message.channel
                     message: message.message
                 else
-                  reject
-                    new errors.PubSubError message.message, null, message.code
+                  reject(new errors.PubSubError(message.message, null, message.code))
               else if message.id?
                 @emit 'message', msg
             catch error

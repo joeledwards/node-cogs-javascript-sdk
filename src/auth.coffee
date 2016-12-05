@@ -25,9 +25,9 @@ splitKey = (key) ->
   if not permKey.match(/^[0-9a-fA-F]+$/)
     throw new errors.AuthKeyError "Invalid format for perm key.", undefined
   
-  return {
+  {
     perm: perm,
-    identity,
+    identity: identity,
     key: permKey
   }
 
