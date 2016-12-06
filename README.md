@@ -136,7 +136,7 @@ var attributes = {
 };
 var tags = ['foo', 'bar'];
 
-cogs.client.getClient('cogs-client.json')
+cogs.cep.getClient('cogs-client.json')
 .then((client) => {
   return client.sendEvent(namespace, eventName, attributes, tags);
 })
@@ -161,7 +161,7 @@ var attributes = {
 };
 var tags = ['foo', 'bar'];
 
-cogs.client.getClient('cogs-client.json')
+cogs.cep.getClient('cogs-client.json')
 .then(client => {
   return client.getChannelSummary(namespace, attributes);
 })
@@ -185,7 +185,7 @@ var topicAttributes = {
 };
 var messageId = 'deadbeef-dead-beef-dead-beefdeadbeef';
 
-cogs.client.getClient('cogs-client.json')
+cogs.cep.getClient('cogs-client.json')
 .then((client) => {
   return client.getMessage(namespace, topicAttributes, messageId);
 })
@@ -209,7 +209,7 @@ var topicAttributes = {
   'my-id-attribute': 12
 };
 
-cogs.client.getClient('cogs-client.json')
+cogs.cep.getClient('cogs-client.json')
 .then(client => {
   return new Promise((resolve, reject) => {
     const ws = client.subscribe(namespace, topicAttributes)) 
