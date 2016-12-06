@@ -254,7 +254,7 @@ class PubSubWebSocket extends EventEmitter
 
 # exports
 module.exports =
-  connect: (keys, baseUrl) ->
-    ws = new PubSubWebSocket keys, baseUrl
+  connect: (keys, options) ->
+    ws = new PubSubWebSocket keys, options
     ws.connect()
     ws
