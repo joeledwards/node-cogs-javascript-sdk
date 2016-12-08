@@ -40,10 +40,10 @@ class PubSubWebSocket extends EventEmitter
         @sequence += 1
         
         record =
-          sequence: seq
-          directive: 'publish'
-          channel: channel
-          message: message
+          seq: seq
+          action: 'publish'
+          chan: channel
+          msg: message
         
         @sock.send JSON.stringify(record)
         .then =>
@@ -68,8 +68,8 @@ class PubSubWebSocket extends EventEmitter
         @sequence += 1
         
         record =
-          sequence: seq
-          directive: 'subscribe'
+          seq: seq
+          action: 'subscribe'
           channel: channel
         
         @sock.send JSON.stringify(record)
@@ -95,8 +95,8 @@ class PubSubWebSocket extends EventEmitter
         @sequence += 1
         
         record =
-          sequence: seq
-          directive: 'unsubscribe'
+          seq: seq
+          action: 'unsubscribe'
           channel: channel
         
         @sock.send JSON.stringify(record)
