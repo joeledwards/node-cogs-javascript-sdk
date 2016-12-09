@@ -26,8 +26,10 @@ class PubSubWebSocket extends EventEmitter
 
     logger.setLogLevel @logLevel
     logger.info "Set logger level to '#{@logLevel}'"
-    logger.info "Options based to new Pub/Sub WebSocket:\n
-        #{JSON.stringify(options, null, 2)}"
+
+    if @options ?
+      logger.info "Options based to new Pub/Sub WebSocket:\n
+          #{JSON.stringify(@options, null, 2)}"
 
     @sock = null
     @pingerRef = null
