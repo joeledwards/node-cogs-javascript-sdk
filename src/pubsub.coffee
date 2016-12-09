@@ -24,7 +24,7 @@ class PubSubWebSocket extends EventEmitter
     @pingInterval = @options.pingInterval ? 15000
     @logLevel = @options.logLevel ? 'error'
 
-    logger.setLevel @logLevel
+    logger.setLogLevel @logLevel
     logger.info "Set logger level to '#{@logLevel}'"
     logger.info "Options based to new Pub/Sub WebSocket:\n
         #{JSON.stringify(options, null, 2)}"
