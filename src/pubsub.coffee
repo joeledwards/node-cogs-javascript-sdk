@@ -155,6 +155,10 @@ class PubSubWebSocket extends EventEmitter
         data = auth.socketAuth @keys
         hasConnected = false
 
+        if data?
+          logger.info "Finished assembling auth data:\n
+              #{JSON.stringify(data, null, 2)}"
+
         url = "#{@baseWsUrl}/push"
         headers =
           'Payload': data.bufferB64
