@@ -22,6 +22,13 @@ class PubSubWebSocket extends EventEmitter
     @connectTimeout = @options.connectTimeout ? 5000
     @autoReconnect = @options.autoReconnect ? true
     @pingInterval = @options.pingInterval ? 15000
+    @logLevel = @options.logLevel ? 'error'
+
+    logger.setLevel @logLevel
+    logger.info "Set logger level to '#{@logLevel}'"
+    logger.info "Options based to new Pub/Sub WebSocket:\n
+        #{JSON.stringify(options, null, 2)}"
+
     @sock = null
     @pingerRef = null
     @messageCount = 0
@@ -30,7 +37,7 @@ class PubSubWebSocket extends EventEmitter
       max: 1000
       maxAge: 60 * 1000
       dispose: (sequence, info) ->
-        console.log "Discarded sequence #{sequence}"
+        logger.info "Discarded old sequence #{sequence}"
     
   # Publish a message to a channel.
   publish: (channel, message) ->

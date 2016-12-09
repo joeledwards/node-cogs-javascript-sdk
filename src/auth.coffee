@@ -50,7 +50,7 @@ socketAuth = (keys) ->
   record =
     identity: identity
     permissions: perms
-    timestamp: moment.utc().toISOString()
+    security_timestamp: moment.utc().toISOString()
   
   sigs = _(keyObjs)
   .map ({key}) -> signRecord key, record
