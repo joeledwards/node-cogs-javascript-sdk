@@ -123,6 +123,32 @@ class PubSubWebSocket extends EventEmitter
         logger.warn message
         reject new error.PubSubError message, null
 
+  # Unsubscribe from a channel.
+  unsubscribeAll: ->
+    new P (resolve, reject) =>
+      if @sock?
+        seq = @sequence
+        @sequence += 1
+        
+        record =
+          seq: seq
+          action: 'unsubscribe'
+        
+        @sock.send JSON.stringify(record)
+        .then =>
+          @outstanding.set seq,
+            resolve: resolve
+            reject: reject
+        .catch (error) ->
+          message = "Socket error while unsubscribing from channel:"
+          logger.error message, error
+          reject new error.PubSubError message, error 
+        
+      else
+        message = "Could not unsubscribe from channel as the socket is currently disconnected."
+        logger.warn message
+        reject new error.PubSubError message, null
+
   # Shutdown the WebSocket for good (prevents subsequent auto-reconnect)
   close: ->
     @autoReconnect = false
@@ -135,13 +161,15 @@ class PubSubWebSocket extends EventEmitter
       finally
         @pingerRef = null
 
-    if @sock?
-      try
-        @sock.close()
-      catch error
-        logger.error "Error while closing WebSocket:", error
-      finally
-        @sock = null
+    @unsubscribeAll()
+    .finally ->
+      if @sock?
+        try
+          @sock.close()
+        catch error
+          logger.error "Error while closing WebSocket:", error
+        finally
+          @sock = null
 
   # Alias to the close() method
   disconnect: -> @close()
