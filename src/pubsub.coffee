@@ -3,6 +3,7 @@ P = require 'bluebird'
 Joi = require 'joi'
 LRU = require 'lru-cache'
 moment = require 'moment'
+dialect = require 'cogs-socket-dialect'
 request = require 'request'
 EventEmitter = require 'eventemitter3'
 
@@ -33,13 +34,39 @@ class PubSubWebSocket extends EventEmitter
 
     @sock = null
     @pingerRef = null
-    @messageCount = 0
+    @recordCount = 0
     @sequence = 0
     @outstanding = LRU
       max: 1000
       maxAge: 60 * 1000
       dispose: (sequence, info) ->
         logger.info "Discarded old sequence #{sequence}"
+
+  # Fetch the client UUID from the server.
+  clientUuid: ->
+    new P (resolve, reject) =>
+      if @sock?
+        seq = @sequence
+        @sequence += 1
+        
+        record =
+          seq: seq
+          action: 'client-uuid'
+        
+        @sock.send JSON.stringify(record)
+        .then =>
+          @outstanding.set seq,
+            resolve: resolve
+            reject: reject
+        .catch (error) ->
+          message = "Socket error while requesting client UUID:"
+          logger.error message, error
+          reject new error.PubSubError message, error 
+        
+      else
+        message = "Could not fetch the client UUID as the socket is currently disconnected."
+        logger.warn message
+        reject new error.PubSubError message, null
     
   # Publish a message to a channel.
   publish: (channel, message) ->
@@ -256,34 +283,46 @@ class PubSubWebSocket extends EventEmitter
             else
               logger.error "WebSocket error:", error
 
-          # Received a message
-          @sock.on 'message', (msg) =>
-            logger.verbose "Received a message:", msg
+          # Received a record
+          @sock.on 'message', (rec) =>
+            logger.verbose "Received a record:", rec
 
             try
-              @messageCount += 1
-              message = JSON.parse msg
+              @recordCount += 1
+              record = JSON.parse rec
 
-              if message.sequence?
-                {resolve, reject} = @outstanding.get message.sequence
+              schema = dialect.identifySchema record
+              dialect.validate record, schema, (error, response) =>
+                if (error)
+                  message = 'Unknown action or bad response format from server'
+                  logger.error "#{message}: #{error}\n#{error.stack}"
+                  @emit 'error', new PubSubError("#{message}: #{rec}", error)
+                else if response.seq?
+                  {resolve, reject} = @outstanding.get message.seq
 
-                if message.code != 200
-                  resolve
-                    channel: message.channel
-                    message: message.message
+                  if response.code == 200
+                    resolve response
+                  else
+                    reject(new errors.PubSubErrorResponse(
+                      response.message, null, record.code,
+                      record.details, record
+                    ))
+                else if message.id?
+                  @emit 'message', record
+
                 else
-                  reject(new errors.PubSubError(message.message, null, message.code))
-              else if message.id?
-                @emit 'message', msg
+                  message = 'Valid, but un-handled response type.'
+                  logger.error "#{message}"
+                  @emit 'error', new PubSubError("#{message}: #{rec}")
             catch error
-              logger.error "Invalid message received: #{error}\n#{error.stack}"
+              message = 'Non-JSON record received from the server'
+              logger.error "#{message}: #{error}\n#{error.stack}"
+              @emit 'error', new PubSubError("#{message}: #{rec}", error)
 
           # WebSoket connection failure
           @sock.once 'connectFailed', (error) =>
             @emit 'connectFailed', error
-
             logger.error "Failed to connect to Pub/Sub WebSocket"
-
             reject new errors.ApiError("Server rejected the push WebSocket", error)
 
         catch error

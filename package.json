@@ -27,7 +27,7 @@
   "dependencies": {
     "bluebird": "^3.4.6",
     "buffer-xor": "^2.0.1",
-    "cogs-pubsub-dialect": "^2.1.0",
+    "cogs-pubsub-dialect": "^2.2.0",
     "commander": "^2.9.0",
     "durations": "^3.0.0",
     "eventemitter3": "^2.0.2",
