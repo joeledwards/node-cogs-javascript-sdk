@@ -303,7 +303,7 @@ class PubSubWebSocket extends EventEmitter
                   if response.code == 200
                     resolve response
                   else
-                    reject(new errors.PubSubErrorResponse(
+                    reject(new errors.PubSubFailureResponse(
                       response.message, null, record.code,
                       record.details, record
                     ))
