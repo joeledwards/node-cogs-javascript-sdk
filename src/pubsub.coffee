@@ -3,7 +3,7 @@ P = require 'bluebird'
 Joi = require 'joi'
 LRU = require 'lru-cache'
 moment = require 'moment'
-dialect = require 'cogs-socket-dialect'
+dialect = require 'cogs-pubsub-dialect'
 request = require 'request'
 EventEmitter = require 'eventemitter3'
 
@@ -67,6 +67,8 @@ class PubSubWebSocket extends EventEmitter
         message = "Could not fetch the client UUID as the socket is currently disconnected."
         logger.warn message
         reject new error.PubSubError message, null
+
+    .then (response) -> response.uuid
     
   # Publish a message to a channel.
   publish: (channel, message) ->
@@ -123,6 +125,8 @@ class PubSubWebSocket extends EventEmitter
         logger.warn message
         reject new error.PubSubError message, null
 
+    .then (response) -> response.channels
+
   # Unsubscribe from a channel.
   unsubscribe: (channel) ->
     new P (resolve, reject) =>
@@ -150,6 +154,8 @@ class PubSubWebSocket extends EventEmitter
         logger.warn message
         reject new error.PubSubError message, null
 
+    .then (response) -> response.channels
+
   # Unsubscribe from a channel.
   unsubscribeAll: ->
     new P (resolve, reject) =>
@@ -175,6 +181,36 @@ class PubSubWebSocket extends EventEmitter
         message = "Could not unsubscribe from channel as the socket is currently disconnected."
         logger.warn message
         reject new error.PubSubError message, null
+
+    .then (response) -> response.channels
+
+  # List all channels to which this connection is subscribed.
+  listSubscriptions: ->
+    new P (resolve, reject) =>
+      if @sock?
+        seq = @sequence
+        @sequence += 1
+        
+        record =
+          seq: seq
+          action: 'subscriptions'
+        
+        @sock.send JSON.stringify(record)
+        .then =>
+          @outstanding.set seq,
+            resolve: resolve
+            reject: reject
+        .catch (error) ->
+          message = "Socket error listing connection subscriptions:"
+          logger.error message, error
+          reject new error.PubSubError message, error 
+        
+      else
+        message = "Could not list channel subscriptions as the socket is currently disconnected."
+        logger.warn message
+        reject new error.PubSubError message, null
+
+    .then (response) -> response.channels
 
   # Shutdown the WebSocket for good (prevents subsequent auto-reconnect)
   close: ->
