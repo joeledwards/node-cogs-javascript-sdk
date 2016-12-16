@@ -334,7 +334,7 @@ class PubSubWebSocket extends EventEmitter
             else
               response = validation.value
 
-              else if response.seq?
+              if response.seq?
                 {resolve, reject} = @outstanding.get message.seq
 
                 if response.code == 200
