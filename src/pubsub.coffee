@@ -322,38 +322,34 @@ class PubSubWebSocket extends EventEmitter
           # Received a record
           @sock.on 'message', (rec) =>
             logger.verbose "Received a record:", rec
+            @recordCount += 1
 
-            try
-              @recordCount += 1
-              record = JSON.parse rec
+            validation = dialect.parseAndAutoValidate record
 
-              schema = dialect.identifySchema record
-              dialect.validate record, schema, (error, response) =>
-                if (error)
-                  message = 'Unknown action or bad response format from server'
-                  logger.error "#{message}: #{error}\n#{error.stack}"
-                  @emit 'error', new PubSubError("#{message}: #{rec}", error)
-                else if response.seq?
-                  {resolve, reject} = @outstanding.get message.seq
-
-                  if response.code == 200
-                    resolve response
-                  else
-                    reject(new errors.PubSubFailureResponse(
-                      response.message, null, record.code,
-                      record.details, record
-                    ))
-                else if message.id?
-                  @emit 'message', record
-
-                else
-                  message = 'Valid, but un-handled response type.'
-                  logger.error "#{message}"
-                  @emit 'error', new PubSubError("#{message}: #{rec}")
-            catch error
-              message = 'Non-JSON record received from the server'
+            if not validation.isValid
+              error = validation.error
+              message = 'Unknown action or bad response format from server'
               logger.error "#{message}: #{error}\n#{error.stack}"
               @emit 'error', new PubSubError("#{message}: #{rec}", error)
+            else
+              response = validation.value
+
+              else if response.seq?
+                {resolve, reject} = @outstanding.get message.seq
+
+                if response.code == 200
+                  resolve response
+                else
+                  reject(new errors.PubSubFailureResponse(
+                    response.message, null, record.code,
+                    record.details, record
+                  ))
+              else if message.id?
+                @emit 'message', record
+              else
+                message = 'Valid, but un-handled response type.'
+                logger.error "#{message}"
+                @emit 'error', new PubSubError("#{message}: #{rec}")
 
           # WebSoket connection failure
           @sock.once 'connectFailed', (error) =>
