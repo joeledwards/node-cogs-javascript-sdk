@@ -32,6 +32,7 @@ class PubSubWebSocket extends EventEmitter
       logger.info "Options based to new Pub/Sub WebSocket:\n
           #{JSON.stringify(@options, null, 2)}"
 
+    @handlers = {}
     @sock = null
     @pingerRef = null
     @recordCount = 0
@@ -99,7 +100,10 @@ class PubSubWebSocket extends EventEmitter
         reject new error.PubSubError message, null
 
   # Subscribe to a channel.
-  subscribe: (channel) ->
+  subscribe: (channel, handler) ->
+    if typeof handler == 'function'
+      @handlers[channel] = handler
+
     new P (resolve, reject) =>
       if @sock?
         seq = @sequence
@@ -127,8 +131,14 @@ class PubSubWebSocket extends EventEmitter
 
     .then (response) -> response.channels
 
+    .catch (error) =>
+      logger.error "Error subscribing to channel '#{channel}'", error
+      delete @handlers[channel]
+
   # Unsubscribe from a channel.
   unsubscribe: (channel) ->
+    delete @handlers[channel]
+
     new P (resolve, reject) =>
       if @sock?
         seq = @sequence
@@ -158,6 +168,8 @@ class PubSubWebSocket extends EventEmitter
 
   # Unsubscribe from a channel.
   unsubscribeAll: ->
+    @handlers = {}
+
     new P (resolve, reject) =>
       if @sock?
         seq = @sequence
@@ -225,7 +237,7 @@ class PubSubWebSocket extends EventEmitter
         @pingerRef = null
 
     @unsubscribeAll()
-    .finally ->
+    .finally =>
       if @sock?
         try
           @sock.close()
@@ -344,14 +356,22 @@ class PubSubWebSocket extends EventEmitter
                     response.message, null, record.code,
                     record.details, record
                   ))
-              else if message.id?
-                @emit 'message', record
+              else if record.action == 'msg'
+                {id, action, chan, msg} = message
+
+                @handlers[chan]?(chan, msg, id)
+
+                setImmediate =>
+                  @emit 'message',
+                    channel: chan
+                    message: msg
+                    id: id
               else
                 message = 'Valid, but un-handled response type.'
                 logger.error "#{message}"
                 @emit 'error', new PubSubError("#{message}: #{rec}")
 
-          # WebSoket connection failure
+          # WebSocket connection failure
           @sock.once 'connectFailed', (error) =>
             @emit 'connectFailed', error
             logger.error "Failed to connect to Pub/Sub WebSocket"
