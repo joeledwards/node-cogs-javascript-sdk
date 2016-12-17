@@ -79,7 +79,7 @@ class PubSubWebSocket extends EventEmitter
         
         record =
           seq: seq
-          action: 'publish'
+          action: 'pub'
           chan: channel
           msg: message
         
