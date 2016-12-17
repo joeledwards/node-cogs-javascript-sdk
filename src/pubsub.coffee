@@ -358,7 +358,7 @@ class PubSubWebSocket extends EventEmitter
                   logger.error "#{message}: #{rec}"
                 else
                   {resolve, reject} = promise
-                  @outstanding.del resposne.seq
+                  @outstanding.del record.seq
 
                   if record.code == 200
                     resolve record
