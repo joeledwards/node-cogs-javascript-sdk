@@ -286,18 +286,19 @@ class PubSubWebSocket extends EventEmitter
 
               reconnect = =>
                 @connect().then =>
+                  setImmediate => @emit 'reconnect'
                   logger.info "Pub/Sub WebSocket replaced."
-                  @emit 'reconnect'
                 .catch (error) =>
+                  setImmediate => @emit 'error', error
                   logger.error "Error replacing Pub/Sub WebSocket", error
-                  @emit 'error', error
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
 
               setTimeout reconnect, 5000
 
             else
-              @emit 'close'
+              setImmediate => @emit 'close'
+
               if hasConnected
                 logger.info "Pub/Sub WebSocket closed."
               else
@@ -310,7 +311,7 @@ class PubSubWebSocket extends EventEmitter
             logger.info "Pub/Sub WebSocket opened."
             hasConnected = true
 
-            @emit 'open'
+            setImmediate => @emit 'open'
 
             pinger = =>
               logger.verbose "Sending PING to keep the Pub/Sub WebSocket alive."
@@ -323,7 +324,7 @@ class PubSubWebSocket extends EventEmitter
 
           # An error occurred
           @sock.on 'error', (error) =>
-            @emit 'error', error
+            setImmediate => @emit 'error', error
 
             if not hasConnected
               logger.error "WebSocket connect error:", error
@@ -336,28 +337,38 @@ class PubSubWebSocket extends EventEmitter
             logger.verbose "Received a record:", rec
             @recordCount += 1
 
-            validation = dialect.parseAndAutoValidate record
+            validation = dialect.parseAndAutoValidate rec
 
             if not validation.isValid
               error = validation.error
-              message = 'Unknown action or bad response format from server'
+              message = 'Unknown action or bad record format from server'
+              setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}", error)
+
               logger.error "#{message}: #{error}\n#{error.stack}"
-              @emit 'error', new PubSubError("#{message}: #{rec}", error)
             else
-              response = validation.value
+              record = validation.value
 
-              if response.seq?
-                {resolve, reject} = @outstanding.get message.seq
+              if record.seq?
+                promise = @outstanding.get record.seq
 
-                if response.code == 200
-                  resolve response
+                if not promise?
+                  message = 'Received a record containing an unknown sequence number.'
+                  setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}")
+
+                  logger.error "#{message}: #{rec}"
                 else
-                  reject(new errors.PubSubFailureResponse(
-                    response.message, null, record.code,
-                    record.details, record
-                  ))
+                  {resolve, reject} = promise
+                  @outstanding.del resposne.seq
+
+                  if record.code == 200
+                    resolve record
+                  else
+                    reject(new errors.PubSubFailureResponse(
+                      record.message, null, record.code,
+                      record.details, record
+                    ))
               else if record.action == 'msg'
-                {id, action, chan, msg} = message
+                {id, action, time, chan, msg} = message
 
                 @handlers[chan]?(chan, msg, id)
 
@@ -365,15 +376,18 @@ class PubSubWebSocket extends EventEmitter
                   @emit 'message',
                     channel: chan
                     message: msg
+                    timestamp: time
                     id: id
               else
+                setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}")
+
                 message = 'Valid, but un-handled response type.'
                 logger.error "#{message}"
-                @emit 'error', new PubSubError("#{message}: #{rec}")
 
           # WebSocket connection failure
           @sock.once 'connectFailed', (error) =>
-            @emit 'connectFailed', error
+            setImmediate => @emit 'connectFailed', error
+
             logger.error "Failed to connect to Pub/Sub WebSocket"
             reject new errors.ApiError("Server rejected the push WebSocket", error)
 
@@ -388,5 +402,5 @@ class PubSubWebSocket extends EventEmitter
 module.exports =
   connect: (keys, options) ->
     ws = new PubSubWebSocket keys, options
-    ws.connect()
-    ws
+    ws.connect().then -> ws
+
