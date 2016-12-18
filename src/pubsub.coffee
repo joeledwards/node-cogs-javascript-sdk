@@ -19,6 +19,8 @@ isNode = -> window == undefined
 
 class PubSubWebSocket extends EventEmitter
   constructor: (@keys, @options) ->
+    super()
+
     @baseWsUrl = @options.baseWsUrl ? 'wss://api.cogswell.io'
     @connectTimeout = @options.connectTimeout ? 5000
     @autoReconnect = @options.autoReconnect ? true
