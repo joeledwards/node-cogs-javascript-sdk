@@ -3,9 +3,8 @@ EventEmitter = require 'eventemitter3'
 {client: nodeWs, w3cwebsocket: browserWs} = require 'websocket'
 
 class BaseWS extends EventEmitter
-  constructor: (url, headers, timeout) ->
+  constructor: (@url, @headers, timeout) ->
     super()
-    @headers = headers
     @config =
       closeTimeout: timeout
       keepaliveInterval: 15000
@@ -19,39 +18,45 @@ class NodeWS extends BaseWS
     @connection = null
 
     @socket.on 'connectFailed', (error) =>
-      @emit 'connectFailed', error
+      setTimeout => @emit 'connectFailed', error
 
     @socket.on 'connect', (connection) =>
       @connection = connection
 
       connection.on 'error', (error) =>
-        @emit 'error', error
+        setTimeout => @emit 'error', error
 
       connection.on 'message', (message) =>
         try
-          @emit 'message', message.utf8Data
+          setTimeout => @emit 'message', message.utf8Data
         catch error
-          @emit 'error', error
+          setTimeout => @emit 'error', error
           
 
       connection.on 'close', =>
-        @emit 'close'
+        setTimeout => @emit 'close'
 
-      @emit 'open'
+      setTimeout => @emit 'open'
 
     @socket.connect url, undefined, undefined, headers
 
-  # Close the WebSocket if it exists
+  # Close the connection if it has been established
   close: ->
-    @connection.close() if @connection?
-    @connection = null
-    @socket = null
+    new P (resolve, reject) =>
+      if @connection?
+        @connection.once 'error', (error) => reject error
+        @connection.once 'close', => resolve()
+        @connection.close()
+        @connection = null
+        @socket = null
+      else
+        resolve()
 
   ping: ->
     @connection.ping() if @connection?
 
   send: (data) ->
-    new P((resolve, reject) => 
+    new P (resolve, reject) => 
       if @connection?
         @connection.send data, (error) ->
           if error?
@@ -60,7 +65,6 @@ class NodeWS extends BaseWS
             resolve()
       else
         reject new Error("Not connected.")
-    )
 
 
 # Browser WebSocket
@@ -74,31 +78,36 @@ class BrowserWS extends BaseWS
 
     @socket.onopen =>
       @connected = true
-      @emit 'open'
+      setImmediate => @emit 'open'
 
     @socket.onmessage (message) =>
-      @emit 'message', message
+      setImmediate => @emit 'message', message
 
     @socket.onclose =>
-      @emit 'close'
+      setImmediate => @emit 'close'
 
     @socket.onerror (error) =>
       if @connected
-        @emit 'error', error
+        setImmediate => @emit 'error', error
       else
-        @emit 'connectFailed', error
+        setImmediate => @emit 'connectFailed', error
 
   # Close the WebSocket if it exists
   close: ->
-    if @socket?
-      @socket.close()
-    @socket = null
+    new P (resolve, reject) =>
+      if @socket?
+        @socket.onerror (error) => reject error
+        @socket.onclose => resolve()
+        @socket.close()
+        @socket = null
+      else
+        resolve()
 
   ping: ->
     @socket.ping() if @socket?
 
   send: (data) ->
-    new P((resolve, reject) ->
+    new P (resolve, reject) =>
       if @socket?
         @socket.send data, (error) ->
           if error?
@@ -106,8 +115,7 @@ class BrowserWS extends BaseWS
           else
             resolve()
       else
-        reject "Not connected."
-    )
+        reject new Error("Not connected.")
     
 
 isNode = new Function "try {return this===global;}catch(e){return false;}"
