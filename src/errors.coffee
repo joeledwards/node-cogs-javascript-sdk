@@ -44,8 +44,8 @@ class PubSubError extends CogsError
     super message, cause, statusCode, details
 
 class PubSubFailureResponse extends PubSubError
-  constructor: (message, cause, statusCode, details, @record) ->
-    super message, cause, statusCode, details
+  constructor: (message, cause, @code, details, @record) ->
+    super message, cause, code, details
 
 module.exports =
   ApiError: ApiError
