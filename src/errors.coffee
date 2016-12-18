@@ -27,24 +27,24 @@ class PushError extends CogsError
 class AuthKeyError extends CogsError
   constructor: (message, cause) -> super message, cause
 
-class PubSubError extends CogsError
-  constructor: (message, cause, statusCode, details) ->
-    super message, cause, statusCode, details
-
 class PubSubFailureResponse extends PubSubError
   constructor: (message, cause, statusCode, details, @record) ->
     super message, cause, statuscode, details
 
 class ApiError extends CogsError
 class InfoError extends CogsError
+class PubSubError extends CogsError
 class ToolsError extends CogsError
 
 module.exports =
   ApiError: ApiError
+  AuthKeyError: AuthKeyError
   CogsError: CogsError
   ConfigError: ConfigError
   InfoError: InfoError
   MonitorError: MonitorError
+  PubSubError: PubSubError
+  PubSubFailureResponse: PubSubFailureResponse
+  PushError: PushError
   TimeoutError: TimeoutError
   ToolsError: ToolsError
-  AuthKeyError: AuthKeyError
