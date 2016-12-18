@@ -29,23 +29,23 @@ class AuthKeyError extends CogsError
 
 class ApiError extends CogsError
   constructor: (message, cause, statusCode, details) ->
-    super message, cause, statuscode, details
+    super message, cause, statusCode, details
 
 class InfoError extends CogsError
   constructor: (message, cause, statusCode, details) ->
-    super message, cause, statuscode, details
+    super message, cause, statusCode, details
 
 class ToolsError extends CogsError
   constructor: (message, cause, statusCode, details) ->
-    super message, cause, statuscode, details
+    super message, cause, statusCode, details
 
 class PubSubError extends CogsError
   constructor: (message, cause, statusCode, details) ->
-    super message, cause, statuscode, details
+    super message, cause, statusCode, details
 
 class PubSubFailureResponse extends PubSubError
   constructor: (message, cause, statusCode, details, @record) ->
-    super message, cause, statuscode, details
+    super message, cause, statusCode, details
 
 module.exports =
   ApiError: ApiError
