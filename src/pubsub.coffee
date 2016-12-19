@@ -366,8 +366,8 @@ class PubSubWebSocket extends EventEmitter
                     resolve record
                   else
                     reject(new errors.PubSubFailureResponse(
-                      record.message, null, record.code,
-                      record.details, record
+                      record.message, new Error('Stack Trace'),
+                      record.code, record.details, record
                     ))
               else if record.action == 'msg'
                 {id, action, time, chan, msg} = message
