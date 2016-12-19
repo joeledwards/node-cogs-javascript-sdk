@@ -179,7 +179,7 @@ class PubSubWebSocket extends EventEmitter
         
         record =
           seq: seq
-          action: 'unsubscribe'
+          action: 'unsubscribe-all'
         
         @sock.send JSON.stringify(record)
         .then =>
@@ -369,7 +369,7 @@ class PubSubWebSocket extends EventEmitter
                       record.message, null, record.code, record.details, record
                     ))
               else if record.action == 'msg'
-                {id, action, time, chan, msg} = message
+                {id, action, time, chan, msg} = record
 
                 @handlers[chan]?(chan, msg, id)
 
