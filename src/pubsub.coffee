@@ -64,12 +64,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error while requesting client UUID:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not fetch the client UUID as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
     .then (response) -> response.uuid
     
@@ -94,12 +94,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error while publishing message:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not publish a message as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
   # Subscribe to a channel.
   subscribe: (channel, handler) ->
@@ -124,12 +124,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error while subscribing to channel:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not subscribe to channel as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
     .then (response) -> response.channels
 
@@ -159,12 +159,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error while unsubscribing from channel:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not unsubscribe from channel as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
     .then (response) -> response.channels
 
@@ -189,12 +189,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error while unsubscribing from channel:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not unsubscribe from channel as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
     .then (response) -> response.channels
 
@@ -217,12 +217,12 @@ class PubSubWebSocket extends EventEmitter
         .catch (error) ->
           message = "Socket error listing connection subscriptions:"
           logger.error message, error
-          reject new error.PubSubError message, error 
+          reject new errors.PubSubError message, error 
         
       else
         message = "Could not list channel subscriptions as the socket is currently disconnected."
         logger.warn message
-        reject new error.PubSubError message, null
+        reject new errors.PubSubError message, null
 
     .then (response) -> response.channels
 
@@ -344,7 +344,7 @@ class PubSubWebSocket extends EventEmitter
             if not validation.isValid
               error = validation.error
               message = 'Unknown action or bad record format from server'
-              setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}", error)
+              setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}", error)
 
               logger.error "#{message}: #{error}\n#{error.stack}"
             else
@@ -355,7 +355,7 @@ class PubSubWebSocket extends EventEmitter
 
                 if not promise?
                   message = 'Received a record containing an unknown sequence number.'
-                  setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}")
+                  setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
 
                   logger.error "#{message}: #{rec}"
                 else
@@ -380,7 +380,7 @@ class PubSubWebSocket extends EventEmitter
                     timestamp: time
                     id: id
               else
-                setImmediate => @emit 'error', new PubSubError("#{message}: #{rec}")
+                setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
 
                 message = 'Valid, but un-handled response type.'
                 logger.error "#{message}"
