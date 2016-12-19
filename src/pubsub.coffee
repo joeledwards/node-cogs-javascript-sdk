@@ -264,7 +264,7 @@ class PubSubWebSocket extends EventEmitter
           logger.info "Finished assembling auth data:\n
               #{JSON.stringify(data, null, 2)}"
 
-        url = "#{@baseWsUrl}/push"
+        url = "#{@baseWsUrl}/pubsub"
         headers =
           'Payload': data.bufferB64
           'PayloadHMAC': data.hmac
@@ -371,7 +371,12 @@ class PubSubWebSocket extends EventEmitter
               else if record.action == 'msg'
                 {id, action, time, chan, msg} = record
 
-                @handlers[chan]?(chan, msg, id)
+                @handlers[chan]?({
+                  channel: chan
+                  message: msg
+                  timestamp: time
+                  id: id
+                })
 
                 setImmediate =>
                   @emit 'message',
@@ -390,11 +395,11 @@ class PubSubWebSocket extends EventEmitter
             setImmediate => @emit 'connectFailed', error
 
             logger.error "Failed to connect to Pub/Sub WebSocket"
-            reject new errors.ApiError("Server rejected the push WebSocket", error)
+            reject new errors.ApiError("Server rejected the pub/sub WebSocket", error)
 
         catch error
           logger.error "Error creating WebSocket for namespace '#{@namespace}' channel #{jsonify(@attributes)}"
-          reject new errors.ApiError("Error creating the push WebSocket", error)
+          reject new errors.ApiError("Error creating the pub/sub WebSocket", error)
 
     new P(connectHandler)
 
