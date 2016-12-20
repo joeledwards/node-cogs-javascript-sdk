@@ -136,6 +136,7 @@ class PubSubWebSocket extends EventEmitter
     .catch (error) =>
       logger.error "Error subscribing to channel '#{channel}'", error
       delete @handlers[channel]
+      throw error
 
   # Unsubscribe from a channel.
   unsubscribe: (channel) ->
@@ -346,7 +347,7 @@ class PubSubWebSocket extends EventEmitter
               message = 'Unknown action or bad record format from server'
               setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}", error)
 
-              logger.error "#{message}: #{error}\n#{error.stack}"
+              logger.error "#{message}: #{rec}: #{error}\n#{error.stack}"
             else
               record = validation.value
 
