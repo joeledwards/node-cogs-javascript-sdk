@@ -340,6 +340,8 @@ class PubSubWebSocket extends EventEmitter
             logger.verbose "Received a record:", rec
             @recordCount += 1
 
+            setImmediate => @emit 'raw-record', rec
+
             validation = dialect.parseAndAutoValidate rec
 
             if not validation.isValid
@@ -357,7 +359,6 @@ class PubSubWebSocket extends EventEmitter
                 if not promise?
                   message = 'Received a record containing an unknown sequence number.'
                   setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
-
                   logger.error "#{message}: #{rec}"
                 else
                   {resolve, reject} = promise
@@ -369,6 +370,7 @@ class PubSubWebSocket extends EventEmitter
                     reject(new errors.PubSubFailureResponse(
                       record.message, null, record.code, record.details, record
                     ))
+
               else if record.action == 'msg'
                 {id, action, time, chan, msg} = record
 
@@ -385,10 +387,14 @@ class PubSubWebSocket extends EventEmitter
                     message: msg
                     timestamp: time
                     id: id
-              else
-                setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
 
+              else if record.action == 'invalid-request'
+                setImmediate => @emit 'invalid-request', record
+                logger.error "Server received a request which did not contain a sequence number:", record
+
+              else
                 message = 'Valid, but un-handled response type.'
+                setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
                 logger.error "#{message}"
 
           # WebSocket connection failure
