@@ -21,6 +21,7 @@ class PubSubWebSocket extends EventEmitter
   constructor: (@keys, @options) ->
     super()
 
+    @sessionUuid = @options.sessionUuid
     @baseWsUrl = @options.baseWsUrl ? 'wss://api.cogswell.io'
     @connectTimeout = @options.connectTimeout ? 5000
     @autoReconnect = @options.autoReconnect ? true
@@ -46,7 +47,7 @@ class PubSubWebSocket extends EventEmitter
         logger.info "Discarded old sequence #{sequence}"
 
   # Fetch the client UUID from the server.
-  clientUuid: ->
+  getSessionUuid: ->
     new P (resolve, reject) =>
       if @sock?
         seq = @sequence
@@ -258,7 +259,7 @@ class PubSubWebSocket extends EventEmitter
       if @sock?
         resolve()
       else
-        data = auth.socketAuth @keys
+        data = auth.socketAuth @keys, @sessionUuid
         hasConnected = false
 
         if data?
@@ -322,6 +323,16 @@ class PubSubWebSocket extends EventEmitter
 
             # Ping every 15 seconds to keep the connection alive 
             @pingerRef = setInterval pinger, @pingInterval
+
+            @getSessionUuid()
+            .then (uuid) =>
+              if @sessionUuid != uuid
+                setImmediate => @emit 'new-session', uuid
+
+              @sessionUuid = uuid
+            .catch (error) =>
+              setImmediate => @emit 'error', error
+              logger.error "Error fetching session UUID:", error
 
             resolve()
 

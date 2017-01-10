@@ -32,7 +32,7 @@ splitKey = (key) ->
   }
 
 # Assemble the auth data
-socketAuth = (keys) ->
+socketAuth = (keys, sessionUuid) ->
   if keys.length < 1
     throw errors.AuthKeyException "No keys supplied.", undefined
 
@@ -51,6 +51,7 @@ socketAuth = (keys) ->
     identity: identity
     permissions: perms
     security_timestamp: moment.utc().toISOString()
+    session_uuid: sessionUuid
   
   sigs = _(keyObjs)
   .map ({key}) -> signRecord key, record
