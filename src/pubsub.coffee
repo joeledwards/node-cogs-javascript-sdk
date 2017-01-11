@@ -228,10 +228,7 @@ class PubSubWebSocket extends EventEmitter
 
     .then (response) -> response.channels
 
-  # Shutdown the WebSocket for good (prevents subsequent auto-reconnect)
-  close: ->
-    @autoReconnect = false
-
+  clearPinger: ->
     if @pingerRef?
       try
         clearInterval @pingerRef
@@ -240,15 +237,26 @@ class PubSubWebSocket extends EventEmitter
       finally
         @pingerRef = null
 
+  # Close the underlying socket. If this is called directly,
+  # and auto-reconnect is enabled, the underlying socket will
+  # be replaced.
+  dropConnection: () ->
+    @clearPinger()
+
+    if @sock?
+      try
+        @sock.close()
+      catch error
+        logger.error "Error while closing WebSocket:", error
+      finally
+        @sock = null
+
+  # Shutdown the WebSocket for good (prevents subsequent auto-reconnect)
+  close: ->
+    @autoReconnect = false
+
     @unsubscribeAll()
-    .finally =>
-      if @sock?
-        try
-          @sock.close()
-        catch error
-          logger.error "Error while closing WebSocket:", error
-        finally
-          @sock = null
+    .finally => @dropConnection()
 
   # Alias to the close() method
   disconnect: -> @close()
