@@ -324,15 +324,18 @@ class PubSubWebSocket extends EventEmitter
             # Ping every 15 seconds to keep the connection alive 
             @pingerRef = setInterval pinger, @pingInterval
 
-            @getSessionUuid()
-            .then (uuid) =>
-              if @sessionUuid != uuid
-                setImmediate => @emit 'new-session', uuid
+            if @autoReconnect == true
+              # Only request the UUID if we will automatically reconnect
+              # when the connection is closed, but not via the close() method.
+              @getSessionUuid()
+              .then (uuid) =>
+                if @sessionUuid != uuid
+                  setImmediate => @emit 'new-session', uuid
 
-              @sessionUuid = uuid
-            .catch (error) =>
-              setImmediate => @emit 'error', error
-              logger.error "Error fetching session UUID:", error
+                @sessionUuid = uuid
+              .catch (error) =>
+                setImmediate => @emit 'error', error
+                logger.error "Error fetching session UUID:", error
 
             resolve()
 
