@@ -55,7 +55,7 @@ class PubSubWebSocket extends EventEmitter
         
         record =
           seq: seq
-          action: 'client-uuid'
+          action: 'session-uuid'
         
         @sock.send JSON.stringify(record)
         .then =>
