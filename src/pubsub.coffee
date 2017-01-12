@@ -16,17 +16,21 @@ WebSocket = require('./ws')()
 jsonify = (obj) -> JSON.stringify obj, null, 2
 
 isNode = -> window == undefined
+defaultReconnectDelay = 5000
+maxReconnectDelay = 120000
 
 class PubSubWebSocket extends EventEmitter
   constructor: (@keys, @options) ->
     super()
 
+    @autoReconnectDelay = defaultReconnectDelay
     @sessionUuid = @options.sessionUuid
     @baseWsUrl = @options.baseWsUrl ? 'wss://api.cogswell.io'
     @connectTimeout = @options.connectTimeout ? 5000
     @autoReconnect = @options.autoReconnect ? true
     @pingInterval = @options.pingInterval ? 15000
     @logLevel = @options.logLevel ? 'error'
+    @hasConnected = false
 
     logger.setLogLevel @logLevel
     logger.info "Set logger level to '#{@logLevel}'"
@@ -240,7 +244,10 @@ class PubSubWebSocket extends EventEmitter
   # Close the underlying socket. If this is called directly,
   # and auto-reconnect is enabled, the underlying socket will
   # be replaced.
-  dropConnection: () ->
+  dropConnection: (options = undefined) ->
+    if _.isNumber(options?.autoReconnectDelay)
+      @autoReconnectDelay = options.autoReconnectDelay
+
     @clearPinger()
 
     if @sock?
@@ -268,7 +275,6 @@ class PubSubWebSocket extends EventEmitter
         resolve()
       else
         data = auth.socketAuth @keys, @sessionUuid
-        hasConnected = false
 
         if data?
           logger.info "Finished assembling auth data:\n
@@ -306,12 +312,16 @@ class PubSubWebSocket extends EventEmitter
               
               logger.info "Connection closed. Reconnecting in 5 seconds."
 
-              setTimeout reconnect, 5000
+              setTimeout reconnect, @autoReconnectDelay
+              previousDelay = @autoReconnectDelay
+              minimumDelay = Math.max(defaultReconnectDelay, previousDelay)
+              nextDelay = Math.min(minimumDelay, maxReconnectDelay) * 2
+              @autoReconnectDelay = nextDelay
 
             else
               setImmediate => @emit 'close'
 
-              if hasConnected
+              if @hasConnected
                 logger.info "Pub/Sub WebSocket closed."
               else
                 message = "Websocket closed before the connection was established"
@@ -321,7 +331,8 @@ class PubSubWebSocket extends EventEmitter
           # The WebSocket connection has been established
           @sock.once 'open', =>
             logger.info "Pub/Sub WebSocket opened."
-            hasConnected = true
+            @hasConnected = true
+            @autoReconnectDelay = defaultReconnectDelay
 
             setImmediate => @emit 'open'
 
@@ -351,7 +362,7 @@ class PubSubWebSocket extends EventEmitter
           @sock.on 'error', (error) =>
             setImmediate => @emit 'error', error
 
-            if not hasConnected
+            if not @hasConnected
               logger.error "WebSocket connect error:", error
               reject error
             else
