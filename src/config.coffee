@@ -21,8 +21,9 @@ validateWithJoi = (config) ->
     }).optional()
     http_request_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, 'Default timeout of 30,000 milliseconds for HTTP requests.')
     websocket_connect_timeout: Joi.number().integer().min(250).max(900000).optional().default(30000, 'Default timeout of 30,000 milliseconds for WebSocket connects.')
-    websocket_auto_reconnect: Joi.boolean().optional().default(true, 'Use this field to control auto-reconnect, defaults to true.')
-    log_level: Joi.only('off', 'error', 'warn', 'info', 'verbose', 'debug').optional().default('error', 'Sets the log level for the SDK, defaults to "error"')
+    websocket_auto_reconnect: Joi.boolean().optional().default(true, 'Use this field to control auto-reconnect, defaults to true.'),
+    log_level: Joi.only('off', 'error', 'warn', 'info', 'verbose', 'debug').optional().default('error', 'Sets the log level for the SDK, defaults to "error"'),
+    event_trace_key: Joi.string().min(1).optional('Auth key required in order to enable event tracing (intended for internal use only)')
   })
   
   P.promisify(Joi.validate)(config, schema)

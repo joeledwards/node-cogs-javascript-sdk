@@ -203,17 +203,30 @@ class ApiClient
       logger.error error
       throw error
 
-  sendEvent: (namespace, eventName, attributes, tags = undefined, debugDirective = undefined) ->
+  sendEvent: (namespace, eventName, attributes, options = undefined) ->
     record = makeRecord @cfg
     record.namespace = namespace
     record.event_name = eventName
     record.attributes = attributes
-    record.tags = tags
-    record.debug_directive = debugDirective
+
+    record.tags = options?.tags ? undefined
+    record.debug_directive = options?.debugDirective ? undefined
+
+    record.tracing = options?.eventTracing ? false
+    record.trace_key = options?.trace_key ? @cfg.event_trace_key ? undefined
 
     data = auth.signRecord @cfg.client_key.secret, record
 
     @makeRequest 'POST', "/event", data
+
+  getEventTrace: (namespace, attributes, eventId) ->
+    record = makeRecord @cfg
+    record.namespace = namespace
+    record.attributes = attributes
+
+    data = auth.signRecord @cfg.client_key.secret, record
+
+    @makeRequest 'GET', "/event_trace/#{eventId}", data
 
   getChannelSummary: (namespace, attributes) ->
     record = makeRecord @cfg
