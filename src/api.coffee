@@ -23,6 +23,8 @@ isNode = -> window == undefined
 
 class PushWebSocket extends EventEmitter
   constructor: (@cfg, @namespace, @attributes, @autoAcknowledge = true) ->
+    super()
+
     @baseWsUrl = @cfg.base_ws_url
     @sock = null
     @pingerRef = null
