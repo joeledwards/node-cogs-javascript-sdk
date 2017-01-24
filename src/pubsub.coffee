@@ -45,11 +45,12 @@ class PubSubWebSocket extends EventEmitter
     @recordCount = 0
     @sequence = 0
     @outstanding = LRU
-      max: 1000
+      max: 10000
       maxAge: 60 * 1000
       dispose: (sequence, promise) ->
-        logger.info "Discarded old sequence #{sequence}"
-        promise?.reject new errors.PubSubResponseTimeout "Timeout awaiting response to sequence #{sequence}", null, sequence
+        if promise?.completed != true
+          logger.info "Discarded old sequence #{sequence}"
+          promise?.reject? new errors.PubSubResponseTimeout "Timeout awaiting response to sequence #{sequence}", null, sequence
 
   # Fetch the client UUID from the server.
   getSessionUuid: ->
@@ -430,13 +431,17 @@ class PubSubWebSocket extends EventEmitter
                   setImmediate => @emit 'error', new errors.PubSubError("#{message}: #{rec}")
                   logger.error "#{message}: #{rec}"
                 else
-                  {resolve, reject} = promise
+                  # We must set this first, otherwise the cleanup handler
+                  # will reject the promise with a timeout error.
+                  promise.completed = true
                   @outstanding.del record.seq
 
+                  {resolve, reject} = promise
+
                   if record.code == 200
-                    resolve record
+                    resolve? record
                   else
-                    reject(new errors.PubSubFailureResponse(
+                    reject?(new errors.PubSubFailureResponse(
                       record.message, null, record.code, record.details, record
                     ))
 
