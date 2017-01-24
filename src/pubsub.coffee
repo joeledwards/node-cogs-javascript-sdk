@@ -47,9 +47,9 @@ class PubSubWebSocket extends EventEmitter
     @outstanding = LRU
       max: 1000
       maxAge: 60 * 1000
-      dispose: (sequence, {reject}) ->
+      dispose: (sequence, promise) ->
         logger.info "Discarded old sequence #{sequence}"
-        reject new errors.PubSubResponseTimeout "Timeout awaiting response to sequence #{sequence}", null, sequence
+        promise?.reject new errors.PubSubResponseTimeout "Timeout awaiting response to sequence #{sequence}", null, sequence
 
   # Fetch the client UUID from the server.
   getSessionUuid: ->

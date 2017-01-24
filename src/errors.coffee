@@ -60,6 +60,7 @@ module.exports =
   MonitorError: MonitorError
   PubSubError: PubSubError
   PubSubFailureResponse: PubSubFailureResponse
+  PubSubResponseTimeout: PubSubResponseTimeout
   PushError: PushError
   TimeoutError: TimeoutError
   ToolsError: ToolsError
