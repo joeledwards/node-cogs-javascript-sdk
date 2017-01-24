@@ -405,7 +405,7 @@ class PubSubWebSocket extends EventEmitter
               logger.error "WebSocket error:", error
 
           # Received a record
-          sock.on 'message', (rec) =>
+          @sock.on 'message', (rec) =>
             logger.verbose "Received a record:", rec
             @recordCount += 1
 
