@@ -49,7 +49,7 @@ class PubSubWebSocket extends EventEmitter
       maxAge: 60 * 1000
       dispose: (sequence, {reject}) ->
         logger.info "Discarded old sequence #{sequence}"
-        reject new errors.PubSubError "Timeout awaiting response to sequence #{sequence}", null
+        reject new errors.PubSubResponseTimeout "Timeout awaiting response to sequence #{sequence}", null, sequence
 
   # Fetch the client UUID from the server.
   getSessionUuid: ->
@@ -80,14 +80,16 @@ class PubSubWebSocket extends EventEmitter
 
   # Publish a message to a channel expecting an acknowledgement on success
   publishWithAck: (channel, message) ->
-    @publish channel, message, true
-    .then (seq) =>
-      @outstanding.set seq,
-        resolve: resolve
-        reject: reject
+    new P (resolve, reject) =>
+      @publish channel, message, true
+      .then (seq) =>
+        @outstanding.set seq,
+          resolve: resolve
+          reject: reject
+      .catch (error) => reject error
     
   # Publish a message to a channel.
-  publish: (channel, message, ack) ->
+  publish: (channel, message, ack, errorHandler) ->
     new P (resolve, reject) =>
       if @sock?
         ack = undefined if ack != true
@@ -101,7 +103,21 @@ class PubSubWebSocket extends EventEmitter
           ack: ack
         
         @sock.send JSON.stringify(record)
-        .then => resolve seq
+        .then =>
+          resolve seq
+
+          # Setup a response sequence handler only if there was an
+          # associated error handler
+          if errorHandler?
+            @outstanding.set seq,
+              reject: (error) =>
+                if error instanceof errors.PubSubResponseTimeout
+                  logger.verbose "Timeout of error handler for sequence #{seq} (Success)."
+                else
+                  logger.warn "Calling user-supplied error handler for sequence #{seq}"
+                  errorHandler error
+              resolve: (response) =>
+                logger.verbose "Ack for seq #{seq} which has no ack handling."
         .catch (error) ->
           message = "Socket error while publishing message:"
           logger.error message, error

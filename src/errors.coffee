@@ -47,6 +47,10 @@ class PubSubFailureResponse extends PubSubError
   constructor: (message, cause, @code, details, @record) ->
     super message, cause, @code, details
 
+class PubSubResponseTimeout extends PubSubError
+  constructor: (message, details, @seq) ->
+    super message, null, null, details
+
 module.exports =
   ApiError: ApiError
   AuthKeyError: AuthKeyError
