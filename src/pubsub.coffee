@@ -47,15 +47,15 @@ class PubSubWebSocket extends EventEmitter
     @outstanding = LRU
       max: 1000
       maxAge: 60 * 1000
-      dispose: (sequence, info) ->
+      dispose: (sequence, {reject}) ->
         logger.info "Discarded old sequence #{sequence}"
+        reject new errors.PubSubError "Timeout awaiting response to sequence #{sequence}", null
 
   # Fetch the client UUID from the server.
   getSessionUuid: ->
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        seq = @sequence += 1
         
         record =
           seq: seq
@@ -77,32 +77,38 @@ class PubSubWebSocket extends EventEmitter
         reject new errors.PubSubError message, null
 
     .then (response) -> response.uuid
+
+  # Publish a message to a channel expecting an acknowledgement on success
+  publishWithAck: (channel, message) ->
+    @publish channel, message, true
+    .then (seq) =>
+      @outstanding.set seq,
+        resolve: resolve
+        reject: reject
     
   # Publish a message to a channel.
-  publish: (channel, message) ->
+  publish: (channel, message, ack) ->
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        ack = undefined if ack != true
+        seq = @sequence += 1
         
         record =
           seq: seq
           action: 'pub'
           chan: channel
           msg: message
+          ack: ack
         
         @sock.send JSON.stringify(record)
-        .then =>
-          @outstanding.set seq,
-            resolve: resolve
-            reject: reject
+        .then => resolve seq
         .catch (error) ->
           message = "Socket error while publishing message:"
           logger.error message, error
           reject new errors.PubSubError message, error 
         
       else
-        message = "Could not publish a message as the socket is currently disconnected."
+        message = "Could not publish a message as the socket is disconnected."
         logger.warn message
         reject new errors.PubSubError message, null
 
@@ -113,8 +119,7 @@ class PubSubWebSocket extends EventEmitter
 
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        seq = @sequence += 1
         
         record =
           seq: seq
@@ -149,8 +154,7 @@ class PubSubWebSocket extends EventEmitter
 
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        seq = @sequence += 1
         
         record =
           seq: seq
@@ -180,8 +184,7 @@ class PubSubWebSocket extends EventEmitter
 
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        seq = @sequence += 1
         
         record =
           seq: seq
@@ -208,8 +211,7 @@ class PubSubWebSocket extends EventEmitter
   listSubscriptions: ->
     new P (resolve, reject) =>
       if @sock?
-        seq = @sequence
-        @sequence += 1
+        seq = @sequence += 1
         
         record =
           seq: seq
@@ -290,7 +292,25 @@ class PubSubWebSocket extends EventEmitter
           @sock = new WebSocket(url, headers, timeout)
 
           # The WebSocket was closed
-          @sock.once 'close', =>
+          @sock.once 'close', (code, cause) =>
+            # WebSocket status codes for socket close
+            #  1000  CLOSE_NORMAL
+            #  1001  CLOSE_GOING_AWAY
+            #  1002  CLOSE_PROTOCOL_ERROR
+            #  1003  CLOSE_UNSUPPORTED
+            #  1005  CLOSE_NO_STATUS
+            #  1006  CLOSE_ABNORMAL
+            #  1007  Unsupported Data
+            #  1008  Policy Violation
+            #  1009  CLOSE_TOO_LARGE
+            #  1010  Missing Extension
+            #  1011  Internal Error
+            #  1012  Service Restart
+            #  1013  Try Again Later
+            #  1015  TLS Handshake
+            #
+            #  https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+
             if @autoReconnect == true
               @sock = null
 
@@ -369,7 +389,7 @@ class PubSubWebSocket extends EventEmitter
               logger.error "WebSocket error:", error
 
           # Received a record
-          @sock.on 'message', (rec) =>
+          sock.on 'message', (rec) =>
             logger.verbose "Received a record:", rec
             @recordCount += 1
 
