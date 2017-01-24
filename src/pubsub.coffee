@@ -81,7 +81,7 @@ class PubSubWebSocket extends EventEmitter
   # Publish a message to a channel expecting an acknowledgement on success
   publishWithAck: (channel, message) ->
     new P (resolve, reject) =>
-      @publish channel, message, true
+      @publish channel, message, undefined, true
       .then (seq) =>
         @outstanding.set seq,
           resolve: resolve
@@ -89,7 +89,7 @@ class PubSubWebSocket extends EventEmitter
       .catch (error) => reject error
     
   # Publish a message to a channel.
-  publish: (channel, message, ack, errorHandler) ->
+  publish: (channel, message, errorHandler, ack) ->
     new P (resolve, reject) =>
       if @sock?
         ack = undefined if ack != true
