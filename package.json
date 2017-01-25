@@ -27,7 +27,7 @@
   "dependencies": {
     "bluebird": "^3.4.7",
     "buffer-xor": "^2.0.1",
-    "cogs-pubsub-dialect": "^4.1.0",
+    "cogs-pubsub-dialect": "^4.2.0",
     "commander": "^2.9.0",
     "durations": "^3.0.0",
     "eventemitter3": "^2.0.2",
@@ -41,7 +41,7 @@
     "winston": "^2.3.1"
   },
   "devDependencies": {
-    "coffee-script": "^1.12.2",
+    "coffee-script": "^1.12.3",
     "log-a-log": "^2.0.0"
   },
   "scripts": {
