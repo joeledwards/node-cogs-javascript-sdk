@@ -3,9 +3,9 @@
   "version": "4.3.4",
   "description": "Unified JavaScript SDK for Cogs' APIs",
   "author": {
-    "name": "Joel Edwards",
-    "email": "joeledwards@gmail.com",
-    "url": "https://github.com/joeledwards"
+    "name": "Aviata, Inc.",
+    "email": "support@cogswell.io",
+    "url": "https://github.com/cogswell-io"
   },
   "keywords": [
     "cogs",
@@ -18,7 +18,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/joeledwards/node-cogs-javascript-sdk.git"
+    "url": "https://github.com/cogswell-io/node-cogs-javascript-sdk.git"
   },
   "main": "./lib/index",
   "bin": {
